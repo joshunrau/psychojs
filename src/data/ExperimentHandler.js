@@ -98,7 +98,7 @@ export class ExperimentHandler extends PsychObject {
 
   /**
    * Whether or not the current entry (i.e. trial data) is empty.
-   * <p>Note: this is mostly useful at the end of an experiment, in order to ensure that the last entry is saved.</p>
+   * Note: this is mostly useful at the end of an experiment, in order to ensure that the last entry is saved.
    *
    * @returns {boolean} whether or not the current entry is empty
    * @todo This really should be renamed: IsCurrentEntryNotEmpty
@@ -110,8 +110,8 @@ export class ExperimentHandler extends PsychObject {
   /**
    * Add a loop.
    *
-   * <p> The loop might be a {@link TrialHandler}, for instance.</p>
-   * <p> Data from this loop will be included in the resulting data files.</p>
+   *  The loop might be a {@link TrialHandler}, for instance.
+   *  Data from this loop will be included in the resulting data files.
    *
    * @param {Object} loop - the loop, e.g. an instance of TrialHandler or StairHandler
    */
@@ -360,7 +360,7 @@ export class ExperimentHandler extends PsychObject {
 
   /**
    * Get the attribute names and values for the current trial of a given loop.
-   * <p> Only info relating to the trial execution are returned.</p>
+   *  Only info relating to the trial execution are returned.
    *
    * @protected
    * @param {Object} loop - the loop

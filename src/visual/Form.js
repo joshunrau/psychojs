@@ -858,7 +858,7 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
   /**
    * Update the form visual representation, if necessary.
    *
-   * <p>This estimate which stimuli are visible, and updates the decorations.</p>
+   * This estimate which stimuli are visible, and updates the decorations.
    *
    * @protected
    */

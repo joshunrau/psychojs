@@ -11,7 +11,7 @@ import { TextBox } from "./TextBox.js";
 import * as util from "../util/Util";
 
 /**
- * <p>ButtonStim visual stimulus.</p>
+ * ButtonStim visual stimulus.
  *
  * @extends TextBox
  */

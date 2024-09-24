@@ -16,7 +16,7 @@ import * as util from "../util/Util.js";
  * <p>This class handles a variety of loggers, e.g. a browser console one (mostly for debugging),
  * a remote one, etc.</p>
  *
- * <p>Note: we use log4javascript for the console logger, and our own for the server logger.</p>
+ * Note: we use log4javascript for the console logger, and our own for the server logger.
  */
 export class Logger {
   /**
@@ -150,9 +150,9 @@ export class Logger {
         // warn the designer if we are not already throttling:
         if (!this._throttling.isThrottling) {
           const msg =
-            `<p>[time= ${time.toFixed(3)}] More than ${this._throttling.threshold} messages were logged in the past ${this._throttling.window}s.</p>` +
-            `<p>We are now throttling: only 1 in ${this._throttling.factor} messages will be logged.</p>` +
-            `<p>You may want to change your experiment's logging level. Please see <a href="https://www.psychopy.org/api/logging.html">psychopy.org/api/logging.html</a> for details.</p>`;
+            `[time= ${time.toFixed(3)}] More than ${this._throttling.threshold} messages were logged in the past ${this._throttling.window}s.` +
+            `We are now throttling: only 1 in ${this._throttling.factor} messages will be logged.` +
+            `You may want to change your experiment's logging level. Please see <a href="https://www.psychopy.org/api/logging.html">psychopy.org/api/logging.html</a> for details.`;
 
           // console warning:
           this._psychoJS.logger.warn(msg);
@@ -375,7 +375,7 @@ Logger.ServerLevel = {
 /**
  * Server logging level values.
  *
- * <p>We use those values to determine whether a log is to be sent to the server or not.</p>
+ * We use those values to determine whether a log is to be sent to the server or not.
  *
  * @enum {number}
  * @readonly

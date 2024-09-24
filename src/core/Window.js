@@ -15,8 +15,8 @@ import { Logger } from "./Logger.js";
 import { hasTouchScreen } from "../util/Util.js";
 
 /**
- * <p>Window displays the various stimuli of the experiment.</p>
- * <p>It sets up a [PIXI]{@link http://www.pixijs.com/} renderer, which we use to render the experiment stimuli.</p>
+ * Window displays the various stimuli of the experiment.
+ * It sets up a [PIXI]{@link http://www.pixijs.com/} renderer, which we use to render the experiment stimuli.
  *
  * @extends PsychObject
  */
@@ -139,7 +139,7 @@ export class Window extends PsychObject {
   /**
    * Close the window.
    *
-   * <p> Note: this actually only removes the canvas used to render the experiment stimuli.</p>
+   *  Note: this actually only removes the canvas used to render the experiment stimuli.
    */
   close() {
     if (!this._renderer) {
@@ -247,7 +247,7 @@ export class Window extends PsychObject {
   /**
    * Log a message.
    *
-   * <p> Note: the message will be time-stamped at the next call to requestAnimationFrame.</p>
+   *  Note: the message will be time-stamped at the next call to requestAnimationFrame.
    *
    * @param {Object} options
    * @param {String} options.msg the message to be logged
@@ -268,7 +268,7 @@ export class Window extends PsychObject {
    * Add a callback function that will run after the next screen flip, i.e. immediately after the next rendering of the
    * Window.
    *
-   * <p>This is typically used to reset a timer or clock.</p>
+   * This is typically used to reset a timer or clock.
    *
    * @param {module:core.Window~OnFlipCallback} flipCallback - callback function.
    * @param {...*} flipCallbackArgs - arguments for the callback function.

@@ -199,8 +199,8 @@ export class PsychoJS {
   /**
    * Open a PsychoJS Window.
    *
-   * <p>This opens a PIXI canvas.</p>
-   * <p>Note: we can only open one window.</p>
+   * This opens a PIXI canvas.
+   * Note: we can only open one window.
    *
    * @param {Object} options
    * @param {string} [options.name] the name of the window
@@ -729,7 +729,7 @@ export class PsychoJS {
   /**
    * Get the IP information of the participant, asynchronously.
    *
-   * <p>Note: we use [http://www.geoplugin.net/json.gp]{@link http://www.geoplugin.net/json.gp}.</p>
+   * Note: we use [http://www.geoplugin.net/json.gp]{@link http://www.geoplugin.net/json.gp}.
    * @protected
    * @return {void}
    */

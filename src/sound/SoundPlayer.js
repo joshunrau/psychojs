@@ -9,7 +9,7 @@
 import { PsychObject } from "../util/PsychObject.js";
 
 /**
- * <p>SoundPlayer is an interface for the sound players, who are responsible for actually playing the sounds, i.e. the tracks or the tones.</p>
+ * SoundPlayer is an interface for the sound players, who are responsible for actually playing the sounds, i.e. the tracks or the tones.
  *
  * @interface
  * @extends PsychObject

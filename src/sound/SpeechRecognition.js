@@ -40,14 +40,14 @@ export class Transcript {
 }
 
 /**
- * <p>This manager handles the live transcription of speech into text.</p>
+ * This manager handles the live transcription of speech into text.
  *
  * @extends PsychObject
  * @todo deal with alternatives, interim results, and recognition errors
  */
 export class SpeechRecognition extends PsychObject {
   /**
-   * <p>This manager handles the live transcription of speech into text.</p>
+   * This manager handles the live transcription of speech into text.
    *
    * @memberOf module:sound
    * @param {Object} options

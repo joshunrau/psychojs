@@ -10,7 +10,7 @@ import { Clock, MonotonicClock } from "../util/Clock.js";
 import { PsychoJS } from "./PsychoJS.js";
 
 /**
- * <p>This manager handles all participant interactions with the experiment, i.e. keyboard, mouse and touch events.</p>
+ * This manager handles all participant interactions with the experiment, i.e. keyboard, mouse and touch events.
  */
 export class EventManager {
   /**
@@ -51,7 +51,7 @@ export class EventManager {
   /**
    * Get the list of keys pressed by the participant.
    *
-   * <p>Note: The w3c [key-event viewer]{@link https://w3c.github.io/uievents/tools/key-event-viewer.html} can be used to see possible values for the items in the keyList given the user's keyboard and chosen layout. The "key" and "code" columns in the UI Events fields are the relevant values for the keyList argument.</p>
+   * Note: The w3c [key-event viewer]{@link https://w3c.github.io/uievents/tools/key-event-viewer.html} can be used to see possible values for the items in the keyList given the user's keyboard and chosen layout. The "key" and "code" columns in the UI Events fields are the relevant values for the keyList argument.
    *
    * @param {Object} options
    * @param {string[]} [options.keyList= null] - keyList allows the user to specify a set of keys to check for. Only keypresses from this set of keys will be removed from the keyboard buffer. If no keyList is given, all keys will be checked and the key buffer will be cleared completely.
@@ -380,7 +380,7 @@ export class EventManager {
 
   /**
    * Convert a keylist that uses pyglet key names to one that uses W3C KeyboardEvent.code values.
-   * <p>This allows key lists that work in the builder environment to work in psychoJS web experiments.</p>
+   * This allows key lists that work in the builder environment to work in psychoJS web experiments.
    *
    * @param {Array.string} pygletKeyList - the array of pyglet key names
    * @return {Array.string} the w3c keyList
@@ -414,7 +414,7 @@ export class EventManager {
 
   /**
    * Convert a keycode to a W3C UI Event code.
-   * <p>This is for legacy browsers.</p>
+   * This is for legacy browsers.
    *
    * @param {number} keycode - the keycode
    * @returns {string} corresponding W3C UI Event code
@@ -517,7 +517,7 @@ EventManager._keycodeMap = {
 
 /**
  * This map associates pyglet key names to the corresponding W3C KeyboardEvent codes values.
- * <p>More information can be found [here]{@link https://www.w3.org/TR/uievents-code}</p>
+ * More information can be found [here]{@link https://www.w3.org/TR/uievents-code}
  *
  * @readonly
  * @protected

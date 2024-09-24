@@ -218,7 +218,7 @@ export class QuestHandler extends TrialHandler {
   /**
    * Get the current value of the variable / contrast / threshold.
    *
-   * <p>This is the getter associated to getQuestValue.</p>
+   * This is the getter associated to getQuestValue.
    *
    * @returns {number} the intensity of the current staircase, or undefined if the trial has ended
    */

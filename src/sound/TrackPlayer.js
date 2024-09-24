@@ -10,7 +10,7 @@ import { SoundPlayer } from "./SoundPlayer.js";
 import { Howl } from "howler";
 
 /**
- * <p>This class handles the playback of sound tracks.</p>
+ * This class handles the playback of sound tracks.
  *
  * @extends SoundPlayer
  * @todo stopTime is currently not implemented (tracks will play from startTime to finish)

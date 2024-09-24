@@ -605,7 +605,7 @@ export class Shelf extends PsychObject {
   /**
    * Update the value associated with the given key.
    *
-   * <p>This is a generic method, typically called from the Shelf helper methods, e.g. setBinaryValue.</p>
+   * This is a generic method, typically called from the Shelf helper methods, e.g. setBinaryValue.
    *
    * @param {string[]} key					 	key as an array of key components
    * @param {Shelf.Type} type 				the type of the record associated with the given key
@@ -665,7 +665,7 @@ export class Shelf extends PsychObject {
   /**
    * Get the value associated with the given key.
    *
-   * <p>This is a generic method, typically called from the Shelf helper methods, e.g. getBinaryValue.</p>
+   * This is a generic method, typically called from the Shelf helper methods, e.g. getBinaryValue.
    *
    * @param {string[]} key					key as an array of key components
    * @param {Shelf.Type} type 			the type of the record associated with the given key
@@ -732,7 +732,7 @@ export class Shelf extends PsychObject {
   /**
    * Check whether it is possible to run a given shelf command.
    *
-   * <p>Since all Shelf methods call _checkAvailability, we also use it as a means to throttle those calls.</p>
+   * Since all Shelf methods call _checkAvailability, we also use it as a means to throttle those calls.
    *
    * @param {string} [methodName=""] - name of the method requiring a check
    * @throws {Object.<string, *>} exception if it is not possible to run the given shelf command

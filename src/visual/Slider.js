@@ -299,7 +299,7 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
   /**
    * Setter for the readOnly attribute.
    *
-   * <p>Read-only sliders are half-opaque and do not provide responses.</p>
+   * Read-only sliders are half-opaque and do not provide responses.
    *
    * @param {boolean} [readOnly= true] - whether or not the slider is read-only
    * @param {boolean} [log= false] - whether of not to log
@@ -342,7 +342,7 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
   /**
    * Setter for the rating attribute.
    *
-   * <p>Setting the rating does not change the visible position of the marker.</p>
+   * Setting the rating does not change the visible position of the marker.
    *
    * @param {number} rating - the rating
    * @param {boolean} [log= false] - whether of not to log
@@ -641,7 +641,7 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
   /**
    * Set the current rating.
    *
-   * <p>Setting the rating does also change the visible position of the marker.</p>
+   * Setting the rating does also change the visible position of the marker.
    *
    * @param {number} rating - the rating
    * @param {number} [responseTime] - the reaction time
@@ -1378,7 +1378,7 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
   /**
    * Determine whether the slider is horizontal.
    *
-   * <p>The slider is horizontal is its x-axis size is larger than its y-axis size.</p>
+   * The slider is horizontal is its x-axis size is larger than its y-axis size.
    *
    * @protected
    * @returns {boolean} whether or not the slider is horizontal

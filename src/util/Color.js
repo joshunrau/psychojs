@@ -19,7 +19,7 @@
  * </ul>
  * </p>
  *
- * <p>Note: internally, colors are represented as a [r,g,b] triplet with r,g,b in [0,1].</p>
+ * Note: internally, colors are represented as a [r,g,b] triplet with r,g,b in [0,1].
  *
  * @todo implement HSV, DKL, and LMS colorspaces
  */
@@ -319,7 +319,7 @@ export class Color {
   /**
    * Get the hexadecimal color code equivalent of the [0, 255] RGB triplet.
    *
-   * <p>Note: this is the fast, unsafe version which does not check for argument sanity</p>
+   * Note: this is the fast, unsafe version which does not check for argument sanity
    *
    * @protected
    * @param {Array.<number>} rgb255 - the [0, 255] RGB triplet
@@ -337,7 +337,7 @@ export class Color {
   /**
    * Get the hexadecimal color code equivalent of the [0, 1] RGB triplet.
    *
-   * <p>Note: this is the fast, unsafe version which does not check for argument sanity</p>
+   * Note: this is the fast, unsafe version which does not check for argument sanity
    *
    * @protected
    * @param {Array.<number>} rgb - the [0, 1] RGB triplet
@@ -355,7 +355,7 @@ export class Color {
   /**
    * Get the integer equivalent of the [0, 1] RGB triplet.
    *
-   * <p>Note: this is the fast, unsafe version which does not check for argument sanity</p>
+   * Note: this is the fast, unsafe version which does not check for argument sanity
    *
    * @protected
    * @param {Array.<number>} rgb - the [0, 1] RGB triplet
@@ -373,7 +373,7 @@ export class Color {
   /**
    * Get the integer equivalent of the [0, 255] RGB triplet.
    *
-   * <p>Note: this is the fast, unsafe version which does not check for argument sanity</p>
+   * Note: this is the fast, unsafe version which does not check for argument sanity
    *
    * @protected
    * @param {Array.<number>} rgb255 - the [0, 255] RGB triplet
@@ -386,7 +386,7 @@ export class Color {
   /**
    * Get the [0, 255] based RGB triplet equivalent of the integer color code.
    *
-   * <p>Note: this is the fast, unsafe version which does not check for argument sanity</p>
+   * Note: this is the fast, unsafe version which does not check for argument sanity
    *
    * @protected
    * @param {number} hex - the integer color code
@@ -403,7 +403,7 @@ export class Color {
   /**
    * Get the [0, 1] based RGB triplet equivalent of the integer color code.
    *
-   * <p>Note: this is the fast, unsafe version which does not check for argument sanity</p>
+   * Note: this is the fast, unsafe version which does not check for argument sanity
    *
    * @protected
    * @param {number} hex - the integer color code

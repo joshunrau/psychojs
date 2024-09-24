@@ -36,7 +36,7 @@ export class KeyPress {
 }
 
 /**
- * <p>This manager handles all keyboard events. It is a substitute for the keyboard component of EventManager. </p>
+ * This manager handles all keyboard events. It is a substitute for the keyboard component of EventManager. 
  *
  * @extends PsychObject
  */

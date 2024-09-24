@@ -614,7 +614,7 @@ TextBox._alignmentToFlexboxMap = new Map([
 ]);
 
 /**
- * <p>This map associates units to default letter height.</p>
+ * This map associates units to default letter height.
  *
  * @readonly
  * @protected
@@ -632,7 +632,7 @@ TextBox._defaultLetterHeightMap = new Map([
 ]);
 
 /**
- * <p>This map associates units to default sizes.</p>
+ * This map associates units to default sizes.
  *
  * @readonly
  * @protected

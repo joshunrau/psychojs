@@ -14,7 +14,7 @@ import * as util from "../util/Util.js";
 import { VisualStim } from "./VisualStim.js";
 
 /**
- * <p>TextStim handles text stimuli.</p>
+ * TextStim handles text stimuli.
  *
  * @extends VisualStim
  * @mixes ColorMixin
@@ -462,7 +462,7 @@ export class TextStim extends util.mix(VisualStim).with(ColorMixin) {
 }
 
 /**
- * <p>This map associates units to default letter height.</p>
+ * This map associates units to default letter height.
  *
  * @readonly
  * @protected
@@ -480,7 +480,7 @@ TextStim._defaultLetterHeightMap = new Map([
 ]);
 
 /**
- * <p>This map associates units to default wrap width.</p>
+ * This map associates units to default wrap width.
  *
  * @readonly
  * @protected

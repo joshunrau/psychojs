@@ -9,9 +9,9 @@
 import * as util from "./Util.js";
 
 /**
- * <p>EventEmitter implements the classic observer/observable pattern.</p>
+ * EventEmitter implements the classic observer/observable pattern.
  *
- * <p>Note: this is heavily inspired by http://www.datchley.name/es6-eventemitter/</p>
+ * Note: this is heavily inspired by http://www.datchley.name/es6-eventemitter/
  *
  * @example
  * let observable = new EventEmitter();

@@ -55,7 +55,7 @@ export class PsychObject extends EventEmitter {
   /**
    * String representation of the PsychObject.
    *
-   * <p>Note: attribute values are limited to 50 characters.</p>
+   * Note: attribute values are limited to 50 characters.
    *
    * @return {string} the representation
    */

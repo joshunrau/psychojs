@@ -12,8 +12,8 @@ import * as util from "../util/Util.js";
 import { PsychoJS } from "./PsychoJS.js";
 
 /**
- * <p>This manager handles the interactions between the experiment's stimuli and the mouse.</p>
- * <p>Note: the unit of Mouse is that of its associated Window.</p>
+ * This manager handles the interactions between the experiment's stimuli and the mouse.
+ * Note: the unit of Mouse is that of its associated Window.
  *
  * @todo visible is not handled at the moment (mouse is always visible)
  */
@@ -102,7 +102,7 @@ export class Mouse extends PsychObject {
   /**
    * Get the status of each button (pressed or released) and, optionally, the time elapsed between  the last call to [clickReset]{@link module:core.Mouse#clickReset} and the pressing or releasing of the buttons.
    *
-   * <p>Note: clickReset is typically called at stimulus onset. When the participant presses a button, the time elapsed since the clickReset is stored internally and can be accessed any time afterwards with getPressed.</p>
+   * Note: clickReset is typically called at stimulus onset. When the participant presses a button, the time elapsed since the clickReset is stored internally and can be accessed any time afterwards with getPressed.
    *
    * @param {boolean} [getTime= false] whether or not to also return timestamps
    * @return {Array.number | Array.<Array.number>} either an array of size 3 with the status (1 for pressed, 0 for released) of each mouse button [left, center, right], or a tuple with that array and another array of size 3 with the timestamps.

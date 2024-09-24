@@ -10,7 +10,7 @@ import { Color } from "../util/Color.js";
 import { ShapeStim } from "./ShapeStim.js";
 
 /**
- * <p>Rectangular visual stimulus.</p>
+ * Rectangular visual stimulus.
  *
  * @extends ShapeStim
  */

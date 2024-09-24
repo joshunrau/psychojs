@@ -172,7 +172,7 @@ export class StairHandler extends TrialHandler {
   /**
    * Get the current value of the variable / contrast / threshold.
    *
-   * <p>This is the getter associated to getStairValue.</p>
+   * This is the getter associated to getStairValue.
    *
    * @returns {number} the intensity of the current staircase, or undefined if the trial has ended
    */

@@ -9,7 +9,7 @@
 import { Color } from "./Color.js";
 
 /**
- * <p>This mixin implement color and contrast changes for visual stimuli</p>
+ * This mixin implement color and contrast changes for visual stimuli
  *
  * @name module:util.ColorMixin
  * @mixin

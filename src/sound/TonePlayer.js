@@ -11,13 +11,13 @@ import { isNumeric } from "../util/Util.js";
 import { SoundPlayer } from "./SoundPlayer.js";
 
 /**
- * <p>This class handles the playing of tones.</p>
+ * This class handles the playing of tones.
  *
  * @extends SoundPlayer
  */
 export class TonePlayer extends SoundPlayer {
   /**
-   * <p>This class handles the playing of tones.</p>
+   * This class handles the playing of tones.
    *
    * @memberOf module:sound
    * @param {Object} options

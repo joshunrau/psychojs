@@ -14,7 +14,7 @@ import { TonePlayer } from "./TonePlayer.js";
 import { TrackPlayer } from "./TrackPlayer.js";
 
 /**
- * <p>This class handles sound playing (tones and tracks)</p>
+ * This class handles sound playing (tones and tracks)
  *
  * <ul>
  * <li> If value is a number then a tone will be generated at that frequency in Hz.</li>

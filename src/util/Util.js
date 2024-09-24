@@ -12,7 +12,7 @@ import seedrandom from "seedrandom";
 /**
  * Syntactic sugar for Mixins
  *
- * <p>This is heavily adapted from: http://justinfagnani.com/2015/12/21/real-mixins-with-javascript-classes/</p>
+ * This is heavily adapted from: http://justinfagnani.com/2015/12/21/real-mixins-with-javascript-classes/
  *
  * @param {Object} superclass
  *
@@ -51,7 +51,7 @@ export function promiseToTupple(promise) {
 
 /**
  * Get a Universally Unique Identifier (RFC4122 version 4) or a pseudo-uuid based on a root
- * <p> See details here: https://www.ietf.org/rfc/rfc4122.txt</p>
+ *  See details here: https://www.ietf.org/rfc/rfc4122.txt
  *
  * @param {string} [root] - the root, for string dependent pseudo uuid's
  * @return {string} the uuid
@@ -264,7 +264,7 @@ export function isNumeric(input) {
 
 /**
  * Check whether a point lies within a polygon
- * <p>We are using the algorithm described here: https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html</p>
+ * We are using the algorithm described here: https://wrf.ecse.rpi.edu//Research/Short_Notes/pnpoly.html
  *
  * @param {number[]} point - the point
  * @param {Object} vertices - the vertices defining the polygon
@@ -292,7 +292,7 @@ export function IsPointInsidePolygon(point, vertices) {
 
 /**
  * Shuffle an array, or a portion of that array, in place using the Fisher-Yastes's modern algorithm
- * <p>See details here: https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm</p>
+ * See details here: https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm
  *
  * @param {Object[]} array - the input 1-D array
  * @param {Function} [randomNumberGenerator= undefined] - A function used to generated random numbers in the interval [0, 1). Defaults to Math.random
@@ -567,7 +567,7 @@ export function to_unit(pos, posUnit, win, targetUnit) {
 /**
  * Convert an object to its string representation, taking care of symbols.
  *
- * <p>Note: if the object is not already a string, we JSON stringify it and detect circularity.</p>
+ * Note: if the object is not already a string, we JSON stringify it and detect circularity.
  *
  * @param {Object} object - the input object
  * @return {string} a string representation of the object or 'Object (circular)'
@@ -647,7 +647,7 @@ export function getRequestError(jqXHR, textStatus, errorThrown) {
 
 /**
  * Test whether an object is either an integer or the string representation of an integer.
- * <p>This is adapted from: https://stackoverflow.com/a/14794066</p>
+ * This is adapted from: https://stackoverflow.com/a/14794066
  *
  * @param {Object} obj - the input object
  * @returns {boolean} whether or not the object is an integer or the string representation of an integer
@@ -1006,7 +1006,7 @@ export function sort(input) {
  *
  * The sequence is such that the integer at index i is: start + step * i, with i >= 0 and start + step * i < stop
  *
- * <p> Note: this is a JavaScript implement of the Python range function, which explains the unusual management of arguments.</p>
+ *  Note: this is a JavaScript implement of the Python range function, which explains the unusual management of arguments.
  *
  * @param {Number} [start=0] - the value of start
  * @param {Number} stop - the value of stop
@@ -1132,7 +1132,7 @@ function _match(value) {
 /**
  * Count the number of elements in the input array that match the given value.
  *
- * <p> Note: count is able to handle NaN, null, as well as any value convertible to a JSON string.</p>
+ *  Note: count is able to handle NaN, null, as well as any value convertible to a JSON string.
  *
  * @param {array} input the input array
  * @param {Number|string|object|null} value the matching value
@@ -1186,7 +1186,7 @@ export function pad(n, width = 2) {
 /**
  * Get the index in the input array of the first element that matches the given value.
  *
- * <p> Note: index is able to handle NaN, null, as well as any value convertible to a JSON string.</p>
+ *  Note: index is able to handle NaN, null, as well as any value convertible to a JSON string.
  *
  * @param {array} input the input array
  * @param {Number|string|object|null} value the matching value

@@ -10,13 +10,13 @@ import { Color } from "../util/Color.js";
 import { ShapeStim } from "./ShapeStim.js";
 
 /**
- * <p>Polygonal visual stimulus.</p>
+ * Polygonal visual stimulus.
  *
  * @extends ShapeStim
  */
 export class Polygon extends ShapeStim {
   /**
-   * <p>Polygonal visual stimulus.</p>
+   * Polygonal visual stimulus.
    *
    * @memberOf module:visual
    * @param {Object} options

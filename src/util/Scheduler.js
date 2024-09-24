@@ -82,7 +82,7 @@ export class Scheduler {
   /**
    * Schedule a series of task or another, based on a condition.
    *
-   * <p>Note: the tasks are [sub-schedulers]{@link Scheduler}.</p>
+   * Note: the tasks are [sub-schedulers]{@link Scheduler}.
    *
    * @param {Scheduler~Condition} condition - the condition
    * @param {Scheduler} thenScheduler - the [Scheduler]{@link Scheduler} to be run if the condition is satisfied
@@ -106,7 +106,7 @@ export class Scheduler {
   /**
    * Start this scheduler.
    *
-   * <p>Note: tasks are run after each animation frame.</p>
+   * Note: tasks are run after each animation frame.
    *
    * @return {Promise<void>} a promise resolved when the scheduler stops, e.g. when the experiments finishes
    */

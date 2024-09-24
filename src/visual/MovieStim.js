@@ -261,7 +261,7 @@ export class MovieStim extends VisualStim {
   /**
    * Jump to a specific timepoint
    *
-   * <p>Note: seek is experimental and does not work on all browsers at the moment.</p>
+   * Note: seek is experimental and does not work on all browsers at the moment.
    *
    * @param {number} timePoint - the timepoint to which to jump (in second)
    * @param {boolean} [log= false] - whether of not to log

@@ -15,7 +15,7 @@ import * as util from "../util/Util.js";
 import { VisualStim } from "./VisualStim.js";
 
 /**
- * <p>This class provides the basic functionality of shape stimuli.</p>
+ * This class provides the basic functionality of shape stimuli.
  *
  * @extends VisualStim
  * @mixes ColorMixin

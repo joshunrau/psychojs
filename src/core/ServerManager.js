@@ -1276,7 +1276,7 @@ export class ServerManager extends PsychObject {
   /**
    * Download the specified resources.
    *
-   * <p>Note: we use the [preloadjs library]{@link https://www.createjs.com/preloadjs}.</p>
+   * Note: we use the [preloadjs library]{@link https://www.createjs.com/preloadjs}.
    *
    * @protected
    * @param {Set} resources - a set of names of previously registered resources

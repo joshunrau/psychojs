@@ -14,7 +14,7 @@ import * as util from "../util/Util.js";
 import seedrandom from "seedrandom";
 
 /**
- * <p>A handler dealing with multiple staircases, simultaneously.</p>
+ * A handler dealing with multiple staircases, simultaneously.
  *
  * <p>Note that, at the moment, using the MultiStairHandler requires the jsQuest.js
  * library to be loaded as a resource, at the start of the experiment.</p>

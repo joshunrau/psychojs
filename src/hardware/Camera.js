@@ -15,7 +15,7 @@ import { ExperimentHandler } from "../data/ExperimentHandler.js";
 // import {VideoClip} from "./VideoClip";
 
 /**
- * <p>This manager handles the recording of video signal.</p>
+ * This manager handles the recording of video signal.
  *
  * @name module:hardware.Camera
  * @class
@@ -307,7 +307,7 @@ export class Camera extends PsychObject {
   /**
    * Submit a request to resume the recording.
    *
-   * <p>resume has no effect if the recording was not previously paused.</p>
+   * resume has no effect if the recording was not previously paused.
    *
    * @name module:hardware.Camera#resume
    * @function
@@ -480,7 +480,7 @@ export class Camera extends PsychObject {
   /**
    * Callback for changes to the recording settings.
    *
-   * <p>Changes to the settings require the recording to stop and be re-started.</p>
+   * Changes to the settings require the recording to stop and be re-started.
    *
    * @name module:hardware.Camera#_onChange
    * @function

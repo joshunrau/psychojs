@@ -14,7 +14,7 @@ import { PsychObject } from "../util/PsychObject.js";
 import * as util from "../util/Util.js";
 
 /**
- * <p>A Trial Handler handles the importing and sequencing of conditions.</p>
+ * A Trial Handler handles the importing and sequencing of conditions.
  *
  * @extends PsychObject
  */
@@ -114,7 +114,7 @@ export class TrialHandler extends PsychObject {
   /**
    * Iterator over the trial sequence.
    *
-   * <p>This makes it possible to iterate over all trials.</p>
+   * This makes it possible to iterate over all trials.
    * @example
    * let handler = new TrialHandler({nReps: 5});
    * for (const thisTrial of handler) { console.log(thisTrial); }
@@ -196,7 +196,7 @@ export class TrialHandler extends PsychObject {
    * Get a snapshot of the current internal state of the trial handler (e.g. current trial number,
    * number of trial remaining).
    *
-   * <p>This is typically used in the LoopBegin function, in order to capture the current state of a TrialHandler</p>
+   * This is typically used in the LoopBegin function, in order to capture the current state of a TrialHandler
    *
    * @return {Snapshot} - a snapshot of the current internal state.
    */
@@ -410,7 +410,7 @@ export class TrialHandler extends PsychObject {
 
   /**
    * Get the nth previous trial.
-   * <p> Note: this is useful for comparisons in n-back tasks.</p>
+   *  Note: this is useful for comparisons in n-back tasks.
    *
    * @param {number} [n = -1] - increment
    * @return {Object|undefined} the past trial or undefined if attempting to go prior to the first trial.
@@ -446,7 +446,7 @@ export class TrialHandler extends PsychObject {
    * <li>contain no spaces or other punctuation (underscores are permitted)</li>
    * </ul></p>
    *
-   * <p>Note that we only consider the first worksheet for .xls, .xlsx and .odp resource.</p>
+   * Note that we only consider the first worksheet for .xls, .xlsx and .odp resource.
    *
    *
    * <p> 'selection' is used to select a subset of condition indices to be used

@@ -145,7 +145,7 @@ export class GUI {
 
         // alert title and close button:
         markup += "<div id='experiment-dialog-title' class='dialog-title'>";
-        markup += `<p>${title}</p>`;
+        markup += `${title}`;
         markup +=
           "<button id='dialogClose' class='dialog-close' data-a11y-dialog-hide aria-label='Cancel Experiment'>&times;</button>";
         markup += "</div>";
@@ -313,7 +313,7 @@ export class GUI {
   /**
    * Show a message to the participant in a dialog box.
    *
-   * <p>This function can be used to display ordinary, warning, and error messages.</p>
+   * This function can be used to display ordinary, warning, and error messages.
    *
    * @param {Object} options
    * @param {string} options.message - the message to be displayed
@@ -377,35 +377,35 @@ export class GUI {
       // if we found an errorCode, we replace the stack-based message by a more user-friendly one:
       if (errorCode) {
         const error = this._userFriendlyError(errorCode);
-        markup += `<div id='experiment-dialog-title' class='dialog-title ${error.class}'><p>${error.title}</p></div>`;
+        markup += `<div id='experiment-dialog-title' class='dialog-title ${error.class}'>${error.title}</div>`;
         markup += "<div class='scrollable-container'>";
-        markup += `<p>${error.text}</p>`;
+        markup += `${error.text}`;
         markup += "</div>";
       } else {
-        markup += `<div id='experiment-dialog-title' class='dialog-title dialog-error'><p>Error</p></div>`;
+        markup += `<div id='experiment-dialog-title' class='dialog-title dialog-error'>Error</div>`;
         markup += "<div class='scrollable-container'>";
-        markup += `<p>Unfortunately we encountered the following error:</p>`;
+        markup += `Unfortunately we encountered the following error:`;
         markup += stackCode;
         markup +=
-          "<p>Try to run the experiment again. If the error persists, contact the experiment designer.</p>";
+          "Try to run the experiment again. If the error persists, contact the experiment designer.";
         markup += "</div>";
       }
     }
 
     // we are displaying a warning:
     else if (typeof warning !== "undefined") {
-      markup += `<div id='experiment-dialog-title' class='dialog-title dialog-warning'><p>Warning</p></div>`;
+      markup += `<div id='experiment-dialog-title' class='dialog-title dialog-warning'>Warning</div>`;
       markup += "<div class='scrollable-container'>";
-      markup += `<p>${warning}</p>`;
+      markup += `${warning}`;
       markup += "</div>";
     }
 
     // we are displaying a message:
     else if (typeof message !== "undefined") {
       markup +=
-        "<div id='experiment-dialog-title' class='dialog-title'><p>Message</p></div>";
+        "<div id='experiment-dialog-title' class='dialog-title'>Message</div>";
       markup += "<div class='scrollable-container'>";
-      markup += `<p>${message}</p>`;
+      markup += `${message}`;
       markup += "</div>";
     }
 
@@ -477,10 +477,10 @@ export class GUI {
       "<div class='dialog-container' id='experiment-dialog' aria-hidden='true' role='alertdialog'>";
     markup += "<div class='dialog-overlay'></div>";
     markup += "<div class='dialog-content'>";
-    markup += `<div id='experiment-dialog-title' class='dialog-title dialog-warning'><p>Warning</p></div>`;
+    markup += `<div id='experiment-dialog-title' class='dialog-title dialog-warning'>Warning</div>`;
 
     markup += "<div class='scrollable-container'>";
-    markup += `<p>${text}</p>`;
+    markup += `${text}`;
     markup += "</div>";
 
     // progress bar:
@@ -733,7 +733,7 @@ export class GUI {
         return {
           class: "dialog-error",
           title: "Error",
-          text: "<p>Oops we encountered an <strong>internal server error</strong>.</p><p>Try to run the experiment again. If the error persists, contact the experiment designer.</p>",
+          text: "Oops we encountered an <strong>internal server error</strong>.</p><p>Try to run the experiment again. If the error persists, contact the experiment designer.",
         };
 
       // MONGODB_ERROR
@@ -741,7 +741,7 @@ export class GUI {
         return {
           class: "dialog-error",
           title: "Error",
-          text: "<p>Oops we encountered a <strong>database error</strong>.</p><p>Try to run the experiment again. If the error persists, contact the experiment designer.</p>",
+          text: "Oops we encountered a <strong>database error</strong>.</p><p>Try to run the experiment again. If the error persists, contact the experiment designer.",
         };
 
       // STATUS_NONE
@@ -749,7 +749,7 @@ export class GUI {
         return {
           class: "dialog-warning",
           title: "Warning",
-          text: `<p><strong>${this._psychoJS.config.experiment.fullpath}</strong> does not have any status and cannot be run.</p><p>If you are the experiment designer, go to your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a> and change the experiment status to either PILOTING or RUNNING.</p><p>Otherwise please contact the experiment designer to let him or her know that the status must be changed to RUNNING for participants to be able to run it.</p>`,
+          text: `<strong>${this._psychoJS.config.experiment.fullpath}</strong> does not have any status and cannot be run.</p><p>If you are the experiment designer, go to your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a> and change the experiment status to either PILOTING or RUNNING.</p><p>Otherwise please contact the experiment designer to let him or her know that the status must be changed to RUNNING for participants to be able to run it.`,
         };
 
       // STATUS_INACTIVE
@@ -757,7 +757,7 @@ export class GUI {
         return {
           class: "dialog-warning",
           title: "Warning",
-          text: `<p><strong>${this._psychoJS.config.experiment.fullpath}</strong> is currently inactive and cannot be run.</p><p>If you are the experiment designer, go to your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a> and change the experiment status to either PILOTING or RUNNING.</p><p>Otherwise please contact the experiment designer to let him or her know that the status must be changed to RUNNING for participants to be able to run it.</p>`,
+          text: `<strong>${this._psychoJS.config.experiment.fullpath}</strong> is currently inactive and cannot be run.</p><p>If you are the experiment designer, go to your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a> and change the experiment status to either PILOTING or RUNNING.</p><p>Otherwise please contact the experiment designer to let him or her know that the status must be changed to RUNNING for participants to be able to run it.`,
         };
 
       // STATUS_DELETED
@@ -765,7 +765,7 @@ export class GUI {
         return {
           class: "dialog-warning",
           title: "Warning",
-          text: `<p><strong>${this._psychoJS.config.experiment.fullpath}</strong> has been deleted and cannot be run.</p><p>If you are the experiment designer, either go to your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a> and change the experiment status to either PILOTING or RUNNING, or generate a new experiment.</p><p>Otherwise please contact the experiment designer to let him or her know that the experiment has been deleted and cannot be run any longer.</p>`,
+          text: `<strong>${this._psychoJS.config.experiment.fullpath}</strong> has been deleted and cannot be run.</p><p>If you are the experiment designer, either go to your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a> and change the experiment status to either PILOTING or RUNNING, or generate a new experiment.</p><p>Otherwise please contact the experiment designer to let him or her know that the experiment has been deleted and cannot be run any longer.`,
         };
 
       // STATUS_ARCHIVED
@@ -773,7 +773,7 @@ export class GUI {
         return {
           class: "dialog-warning",
           title: "Warning",
-          text: `<p><strong>${this._psychoJS.config.experiment.fullpath}</strong> has been archived and cannot be run.</p><p>If you are the experiment designer, go to your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a> and change the experiment status to either PILOTING or RUNNING.</p><p>Otherwise please contact the experiment designer to let him or her know that the experiment has been archived and cannot be run at the moment.</p>`,
+          text: `<strong>${this._psychoJS.config.experiment.fullpath}</strong> has been archived and cannot be run.</p><p>If you are the experiment designer, go to your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a> and change the experiment status to either PILOTING or RUNNING.</p><p>Otherwise please contact the experiment designer to let him or her know that the experiment has been archived and cannot be run at the moment.`,
         };
 
       // PILOTING_NO_TOKEN
@@ -781,7 +781,7 @@ export class GUI {
         return {
           class: "dialog-warning",
           title: "Warning",
-          text: `<p><strong>${this._psychoJS.config.experiment.fullpath}</strong> is currently in PILOTING mode but the pilot token is missing from the URL.</p><p>If you are the experiment designer, you can pilot it by pressing the pilot button on your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a>.</p><p>Otherwise please contact the experiment designer to let him or her know that the experiment status must be changed to RUNNING for participants to be able to run it.</p>`,
+          text: `<strong>${this._psychoJS.config.experiment.fullpath}</strong> is currently in PILOTING mode but the pilot token is missing from the URL.</p><p>If you are the experiment designer, you can pilot it by pressing the pilot button on your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a>.</p><p>Otherwise please contact the experiment designer to let him or her know that the experiment status must be changed to RUNNING for participants to be able to run it.`,
         };
 
       // PILOTING_INVALID_TOKEN
@@ -789,7 +789,7 @@ export class GUI {
         return {
           class: "dialog-warning",
           title: "Warning",
-          text: `<p><strong>${this._psychoJS.config.experiment.fullpath}</strong> cannot be run because the pilot token in the URL is invalid, possibly because it has expired.</p><p>If you are the experiment designer, you can generate a new token by pressing the pilot button on your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a>.</p><p>Otherwise please contact the experiment designer to let him or her know that the experiment status must be changed to RUNNING for participants to be able to run it.</p>`,
+          text: `<strong>${this._psychoJS.config.experiment.fullpath}</strong> cannot be run because the pilot token in the URL is invalid, possibly because it has expired.</p><p>If you are the experiment designer, you can generate a new token by pressing the pilot button on your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a>.</p><p>Otherwise please contact the experiment designer to let him or her know that the experiment status must be changed to RUNNING for participants to be able to run it.`,
         };
 
       // LICENSE_EXPIRED
@@ -797,7 +797,7 @@ export class GUI {
         return {
           class: "dialog-warning",
           title: "Warning",
-          text: `<p><strong>${this._psychoJS.config.experiment.fullpath}</strong> is covered by a license that has expired. </p><p>If you are the experiment designer, you can either contact the license manager to inquire about the expiration, or you can run your experiments using credits. You will find all relevant details about the license on your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a>, where you will also be able to change its running mode to CREDIT.</p><p>Otherwise please contact the experiment designer to let him or her know that there is an issue with the experiment's license having expired.</p>`,
+          text: `<strong>${this._psychoJS.config.experiment.fullpath}</strong> is covered by a license that has expired. </p><p>If you are the experiment designer, you can either contact the license manager to inquire about the expiration, or you can run your experiments using credits. You will find all relevant details about the license on your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a>, where you will also be able to change its running mode to CREDIT.</p><p>Otherwise please contact the experiment designer to let him or her know that there is an issue with the experiment's license having expired.`,
         };
 
       // LICENSE_APPROVAL_NEEDED
@@ -805,7 +805,7 @@ export class GUI {
         return {
           class: "dialog-warning",
           title: "Warning",
-          text: `<p><strong>${this._psychoJS.config.experiment.fullpath}</strong> is covered by a license that requires one or more documents to be approved before the experiment can be run. </p><p>If you are the experiment designer, please contact the license manager and ask him or her which documents must be approved. You will find all relevant details about the license on your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a>.</p><p>Otherwise please contact the experiment designer to let him or her know that there is an issue with the experiment's license requiring documents to be approved.</p>`,
+          text: `<strong>${this._psychoJS.config.experiment.fullpath}</strong> is covered by a license that requires one or more documents to be approved before the experiment can be run. </p><p>If you are the experiment designer, please contact the license manager and ask him or her which documents must be approved. You will find all relevant details about the license on your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a>.</p><p>Otherwise please contact the experiment designer to let him or her know that there is an issue with the experiment's license requiring documents to be approved.`,
         };
 
       // CREDIT_NOT_ENOUGH
@@ -813,14 +813,14 @@ export class GUI {
         return {
           class: "dialog-warning",
           title: "Warning",
-          text: `<p><strong>${this._psychoJS.config.experiment.fullpath}</strong> does not have any assigned credit left and cannot be run.</p><p>If you are the experiment designer, you can assign more credits to it on your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a>.</p><p>Otherwise please contact the experiment designer to let him or her know that the experiment requires more assigned credits to run.</p>`,
+          text: `<strong>${this._psychoJS.config.experiment.fullpath}</strong> does not have any assigned credit left and cannot be run.</p><p>If you are the experiment designer, you can assign more credits to it on your <a href="https://pavlovia.org/${this._psychoJS.config.experiment.fullpath}">experiment page</a>.</p><p>Otherwise please contact the experiment designer to let him or her know that the experiment requires more assigned credits to run.`,
         };
 
       default:
         return {
           class: "dialog-error",
           title: "Error",
-          text: `<p>Unfortunately we encountered an unspecified error (error code: ${errorCode}.</p><p>Try to run the experiment again. If the error persists, contact the experiment designer.</p>`,
+          text: `Unfortunately we encountered an unspecified error (error code: ${errorCode}.</p><p>Try to run the experiment again. If the error persists, contact the experiment designer.`,
         };
     }
   }

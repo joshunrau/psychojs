@@ -14,7 +14,7 @@ import * as util from "../util/Util.js";
 import { AudioClip } from "./AudioClip.js";
 
 /**
- * <p>This manager handles the recording of audio signal.</p>
+ * This manager handles the recording of audio signal.
  *
  * @extends PsychObject
  */
@@ -180,7 +180,7 @@ export class Microphone extends PsychObject {
   /**
    * Submit a request to resume the recording.
    *
-   * <p>resume has no effect if the recording was not previously paused.</p>
+   * resume has no effect if the recording was not previously paused.
    *
    * @param {Object} options
    * @param {boolean} [options.clear= false] whether or not to empty the audio buffer before
@@ -327,7 +327,7 @@ export class Microphone extends PsychObject {
   /**
    * Callback for changes to the recording settings.
    *
-   * <p>Changes to the settings require the recording to stop and be re-started.</p>
+   * Changes to the settings require the recording to stop and be re-started.
    *
    * @protected
    */

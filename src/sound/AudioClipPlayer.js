@@ -10,7 +10,7 @@ import { AudioClip } from "./AudioClip.js";
 import { SoundPlayer } from "./SoundPlayer.js";
 
 /**
- * <p>This class handles the playback of an audio clip, e.g. a microphone recording.</p>
+ * This class handles the playback of an audio clip, e.g. a microphone recording.
  *
  * @extends SoundPlayer
  */

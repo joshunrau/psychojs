@@ -11,7 +11,7 @@ import * as util from "../util/Util.js";
 import { PsychoJS } from "./PsychoJS.js";
 
 /**
- * <p>MinimalStim is the base class for all stimuli.</p>
+ * MinimalStim is the base class for all stimuli.
  *
  * @extends PsychObject
  */

@@ -12,7 +12,7 @@ import { PsychObject } from "../util/PsychObject.js";
 import * as util from "../util/Util.js";
 
 /**
- * <p>AudioClip encapsulates an audio recording.</p>
+ * AudioClip encapsulates an audio recording.
  *
  * @extends PsychObject
  */

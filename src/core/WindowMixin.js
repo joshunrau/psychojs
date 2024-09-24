@@ -7,7 +7,7 @@
  */
 
 /**
- * <p>This mixin implements various unit-handling measurement methods.</p>
+ * This mixin implements various unit-handling measurement methods.
  *
  * <p>Note: (a) this is the equivalent of PsychoPY's WindowMixin.
  *          (b) it will most probably be made obsolete by a fully-integrated unit approach.
