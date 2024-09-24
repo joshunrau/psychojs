@@ -15,9 +15,8 @@
   },
   "main": "./src/index.js",
   "scripts": {
-    "build": "npm run build:js && npm run build:css && npm run build:docs",
+    "build": "npm run build:js && npm run build:css",
     "build:css": "node ./scripts/build.css.cjs",
-    "build:docs": "jsdoc src -c jsdoc.json & cp jsdoc.css docs/styles/",
     "build:js": "node ./scripts/build.js.cjs",
     "lint": "npm run lint:js && npm run lint:css",
     "lint:css": "csslint src",
