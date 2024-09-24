@@ -1,0 +1,3 @@
+node_modules
+src/visual/shaders
+pnpm-lock.yaml

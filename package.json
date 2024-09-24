@@ -25,6 +25,7 @@
     "lint:css": "csslint src",
     "lint:js": "eslint src",
     "lint:scripts": "eslint scripts --ext .cjs",
+    "format": "prettier --write .",
     "start": "npm run build"
   },
   "dependencies": {
