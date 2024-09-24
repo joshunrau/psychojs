@@ -1,30 +1,30 @@
-# Starts up one BrowserStack session per platform, then runs each test in succession. 
+# Starts up one BrowserStack session per platform, then runs each test in succession.
 # That's relatively fast, but less thorough, since a failed test aborts any successive tests.
 name: Automated Test (short)
 on:
-#  push:
-#    branches: '**'
-#  pull_request:
-#    branches: '**'
+  #  push:
+  #    branches: '**'
+  #  pull_request:
+  #    branches: '**'
   workflow_dispatch:
     inputs:
       repo:
-        description: 'PsychoJS repo (psychopy/psychojs)'
+        description: "PsychoJS repo (psychopy/psychojs)"
         required: false
       ref:
-        description: 'branch/tag/SHA (default branch)'
+        description: "branch/tag/SHA (default branch)"
         required: false
       testrun:
-        description: 'testrun (short)'
+        description: "testrun (short)"
         required: false
       subset:
-        description: 'subset (true)'
+        description: "subset (true)"
         required: false
       platform:
         description: 'platform (\*)'
         required: false
       label:
-        description: 'label (short)'
+        description: "label (short)"
         required: false
 env:
   BROWSERSTACK_ACCESSKEY: ${{ secrets.BROWSERSTACK_ACCESSKEY }}
@@ -32,12 +32,12 @@ env:
   STAGING_PASSWORD: ${{ secrets.STAGING_PASSWORD }}
   STAGING_PORT: ${{ secrets.STAGING_PORT }}
   STAGING_USERNAME: ${{ secrets.STAGING_USERNAME }}
-  PSYCHOJS_PATH: '/home/runner/work/psychojs/psychojs/psychojs'
-  DEFAULT_REPO: 'psychopy/psychojs'
-  DEFAULT_TESTRUN: 'short'
-  DEFAULT_SUBSET: 'true'
+  PSYCHOJS_PATH: "/home/runner/work/psychojs/psychojs/psychojs"
+  DEFAULT_REPO: "psychopy/psychojs"
+  DEFAULT_TESTRUN: "short"
+  DEFAULT_SUBSET: "true"
   DEFAULT_PLATFORM: '\*'
-  DEFAULT_LABEL: 'short'
+  DEFAULT_LABEL: "short"
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -45,8 +45,8 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v1
         with:
-          node-version: '15'
-          
+          node-version: "15"
+
       # START: install psychojs_testing
       - name: Checkout psychojs_testing
         uses: actions/checkout@v2
@@ -63,11 +63,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
             ${{ runner.os }}-build-
-            ${{ runner.os }}-:  
+            ${{ runner.os }}-:
       - name: Install psychojs_testing
         run: npm --prefix psychojs_testing ci
       # END: install psychojs_testing
-    
+
       # START: install psychojs
       - name: Checkout psychojs
         uses: actions/checkout@v2
@@ -85,11 +85,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
             ${{ runner.os }}-build-
-            ${{ runner.os }}-:  
+            ${{ runner.os }}-:
       - name: Install psychojs
         run: npm --prefix psychojs ci
       # END: install psychojs
-      
+
       # START: wait for other workflows to complete
       - name: Turnstyle (wait for other workflows to complete)
         uses: softprops/turnstyle@v1
@@ -97,10 +97,10 @@ jobs:
           poll-interval-seconds: 10
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # END: wait for other workflows to complete          
-      
+      # END: wait for other workflows to complete
+
       # START: run tests
       - name: Run tests
         run: node test.cjs --server bs --testrun ${{github.event.inputs.testrun || env.DEFAULT_TESTRUN}} --subset ${{github.event.inputs.subset || env.DEFAULT_SUBSET}} --platform ${{github.event.inputs.platform || env.DEFAULT_PLATFORM}} --url stager --uploadExperiments --uploadResults --label ${{github.event.inputs.label || env.DEFAULT_LABEL}}
-        working-directory: ./psychojs_testing        
+        working-directory: ./psychojs_testing
       # END: run tests

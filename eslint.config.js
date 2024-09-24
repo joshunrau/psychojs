@@ -1,14 +1,12 @@
-import { config } from '@douglasneuroinformatics/eslint-config';
+import { config } from "@douglasneuroinformatics/eslint-config";
 
-export default config(
-  {
-    env: {
-      browser: true,
-      es2021: true,
-      node: true
-    },
-    typescript: {
-      enabled: true
-    }
-  }
-);
+export default config({
+  env: {
+    browser: true,
+    es2021: true,
+    node: true,
+  },
+  typescript: {
+    enabled: true,
+  },
+});

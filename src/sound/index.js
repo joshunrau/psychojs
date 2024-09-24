@@ -5,4 +5,4 @@ export * from "./TrackPlayer.js";
 export * from "./AudioClip.js";
 export * from "./AudioClipPlayer.js";
 export * from "./Microphone.js";
-export * from './SpeechRecognition.js';
+export * from "./SpeechRecognition.js";
