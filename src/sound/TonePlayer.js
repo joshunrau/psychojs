@@ -19,7 +19,6 @@ export class TonePlayer extends SoundPlayer {
   /**
    * This class handles the playing of tones.
    *
-   * @memberOf module:sound
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {number} [options.secs= 0.5] - duration of the tone (in seconds). If secs == -1, the sound will play indefinitely.

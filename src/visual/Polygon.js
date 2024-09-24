@@ -18,7 +18,6 @@ export class Polygon extends ShapeStim {
   /**
    * Polygonal visual stimulus.
    *
-   * @memberOf module:visual
    * @param {Object} options
    * @param {String} options.name - the name used when logging messages from this stimulus
    * @param {Window} options.win - the associated Window

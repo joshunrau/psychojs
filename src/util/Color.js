@@ -25,7 +25,6 @@
  */
 export class Color {
   /**
-   * @memberof module:util
    * @param {string|number|Array.<number>|undefined} [obj= 'black'] - an object representing a color
    * @param {module:util.Color#COLOR_SPACE|undefined} [colorspace=Color.COLOR_SPACE.RGB] - the colorspace of that color
    */

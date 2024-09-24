@@ -16,7 +16,6 @@ import { PsychoJS } from "./PsychoJS.js";
  */
 export class KeyPress {
   /**
-   * @memberof module:core
    * @param {string} code - W3C Key Code
    * @param {number} tDown - time of key press (keydown event) relative to the global Monotonic Clock
    * @param {string | undefined} name - pyglet key name
@@ -36,13 +35,12 @@ export class KeyPress {
 }
 
 /**
- * This manager handles all keyboard events. It is a substitute for the keyboard component of EventManager. 
+ * This manager handles all keyboard events. It is a substitute for the keyboard component of EventManager.
  *
  * @extends PsychObject
  */
 export class Keyboard extends PsychObject {
   /**
-   * @memberof module:core
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {number} [options.bufferSize= 10000] - the maximum size of the circular keyboard event buffer

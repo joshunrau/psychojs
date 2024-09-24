@@ -16,7 +16,6 @@ import { SoundPlayer } from "./SoundPlayer.js";
  */
 export class AudioClipPlayer extends SoundPlayer {
   /**
-   * @memberOf module:sound
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {Object} options.audioClip - the module:sound.AudioClip

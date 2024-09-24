@@ -49,7 +49,6 @@ export class SpeechRecognition extends PsychObject {
   /**
    * This manager handles the live transcription of speech into text.
    *
-   * @memberOf module:sound
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {String} options.name - the name used when logging messages

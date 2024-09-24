@@ -23,7 +23,6 @@ import * as PIXI from "pixi.js-legacy";
  */
 export class FaceDetector extends VisualStim {
   /**
-   * @memberOf module:visual
    * @param {Object} options
    * @param {String} options.name - the name used when logging messages from the detector
    * @param {module:core.Window} options.win - the associated Window

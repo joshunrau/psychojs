@@ -17,7 +17,6 @@ import * as util from "../util/Util";
  */
 export class ButtonStim extends TextBox {
   /**
-   * @memberOf module:visual
    * @param {Object} options
    * @param {module:core.Window} options.win - the associated Window
    * @param {String} options.name - the name used when logging messages from this stimulus

@@ -22,7 +22,6 @@ import { VisualStim } from "./VisualStim.js";
  */
 export class TextStim extends util.mix(VisualStim).with(ColorMixin) {
   /**
-   * @memberOf module:visual
    * @param {Object} options
    * @param {String} options.name - the name used when logging messages from this stimulus
    * @param {module:core.Window} options.win - the associated Window

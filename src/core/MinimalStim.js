@@ -17,7 +17,6 @@ import { PsychoJS } from "./PsychoJS.js";
  */
 export class MinimalStim extends PsychObject {
   /**
-   * @memberof module:core
    * @param {Object} options
    * @param {String} options.name - the name used when logging messages from this stimulus
    * @param {module:core.Window} options.win - the associated Window

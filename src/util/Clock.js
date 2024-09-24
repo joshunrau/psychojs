@@ -11,7 +11,6 @@
  */
 export class MonotonicClock {
   /**
-   * @memberof module:util
    * @param {number} [startTime= <time elapsed since the reference point, i.e. the time when the module was loaded>] - the clock's start time (in ms)
    */
   constructor(startTime = MonotonicClock.getReferenceTime()) {
@@ -114,7 +113,6 @@ MonotonicClock._referenceTime = performance.now() / 1000.0;
  */
 export class Clock extends MonotonicClock {
   /**
-   * @memberof module:util
    */
   constructor() {
     super();
@@ -149,7 +147,6 @@ export class Clock extends MonotonicClock {
  */
 export class CountdownTimer extends Clock {
   /**
-   * @memberof module:util
    * @param {number} [startTime= 0] - the start time of the countdown
    */
   constructor(startTime = 0) {

@@ -20,7 +20,6 @@ import { AudioClip } from "./AudioClip.js";
  */
 export class Microphone extends PsychObject {
   /**
-   * @memberOf module:sound
    * @param {Object} options
    * @param {module:core.Window} options.win - the associated Window
    * @param {String} options.name - the name used when logging messages from this stimulus

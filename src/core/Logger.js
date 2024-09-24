@@ -20,7 +20,6 @@ import * as util from "../util/Util.js";
  */
 export class Logger {
   /**
-   * @memberof module:core
    * @param {module:core.PsychoJS} psychoJS - the PsychoJS instance
    * @param {*} threshold - the logging threshold, e.g. log4javascript.Level.ERROR
    */

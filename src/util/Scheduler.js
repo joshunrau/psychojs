@@ -30,7 +30,6 @@
  */
 export class Scheduler {
   /**
-   * @memberof module:util
    * @param {module:core.PsychoJS} psychoJS - the PsychoJS instance
    */
   constructor(psychoJS) {

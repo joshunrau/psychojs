@@ -22,7 +22,6 @@ import * as util from "./Util.js";
  */
 export class EventEmitter {
   /**
-   * @memberof module:util
    */
   constructor() {
     this._listeners = new Map();

@@ -45,7 +45,6 @@ export class ExperimentHandler extends PsychObject {
   }
 
   /**
-   * @memberof module:data
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {string} options.name - name of the experiment

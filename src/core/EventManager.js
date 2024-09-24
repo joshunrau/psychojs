@@ -14,7 +14,6 @@ import { PsychoJS } from "./PsychoJS.js";
  */
 export class EventManager {
   /**
-   * @memberof module:core
    * @param {Object} psychoJS
    * @param {module:core.PsychoJS} psychoJS - the PsychoJS instance
    */

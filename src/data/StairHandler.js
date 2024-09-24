@@ -16,7 +16,6 @@ import { TrialHandler } from "./TrialHandler.js";
  */
 export class StairHandler extends TrialHandler {
   /**
-   * @memberof module:data
    * @param {Object} options - the handler options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {string} options.varName - the name of the variable / intensity / contrast / threshold manipulated by QUEST

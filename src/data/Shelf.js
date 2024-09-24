@@ -27,7 +27,6 @@ export class Shelf extends PsychObject {
   static #MAX_KEY_LENGTH = 10;
 
   /**
-   * @memberOf module:data
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS 	the PsychoJS instance
    * @param {boolean} [options.autoLog= false] 				whether to log

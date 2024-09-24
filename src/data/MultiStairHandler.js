@@ -23,7 +23,6 @@ import seedrandom from "seedrandom";
  */
 export class MultiStairHandler extends TrialHandler {
   /**
-   * @memberof module:data
    * @param {Object} options - the handler options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {string} options.varName - the name of the variable / intensity / contrast

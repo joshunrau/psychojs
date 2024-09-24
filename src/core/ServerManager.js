@@ -36,7 +36,6 @@ export class ServerManager extends PsychObject {
   static ALL_RESOURCES = Symbol.for("ALL_RESOURCES");
 
   /**
-   * @memberof module:core
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {boolean} [options.autoLog= false] - whether or not to log

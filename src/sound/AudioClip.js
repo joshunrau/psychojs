@@ -18,7 +18,6 @@ import * as util from "../util/Util.js";
  */
 export class AudioClip extends PsychObject {
   /**
-   * @memberOf module:sound
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {String} [options.name= 'audioclip'] - the name used when logging messages

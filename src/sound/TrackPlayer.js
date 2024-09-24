@@ -18,7 +18,6 @@ import { Howl } from "howler";
  */
 export class TrackPlayer extends SoundPlayer {
   /**
-   * @memberOf module:sound
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {Object} options.howl - the sound object (see {@link https://howlerjs.com/})

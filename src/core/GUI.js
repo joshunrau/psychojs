@@ -40,7 +40,6 @@ export class GUI {
   }
 
   /**
-   * @memberof module:core
    * @param {module:core.PsychoJS} psychoJS - the PsychoJS instance
    */
   constructor(psychoJS) {

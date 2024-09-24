@@ -16,7 +16,6 @@ import { PsychObject } from "../util/PsychObject.js";
  */
 export class SoundPlayer extends PsychObject {
   /**
-   * @memberOf module:sound
    * @param {module:core.PsychoJS} psychoJS - the PsychoJS instance
    */
   constructor(psychoJS) {

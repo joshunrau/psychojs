@@ -49,7 +49,6 @@ export class Window extends PsychObject {
   }
 
   /**
-   * @memberof module:core
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {string} [options.name] the name of the window
