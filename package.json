@@ -20,9 +20,7 @@
     "npm": ">=6.14.8"
   },
   "scripts": {
-    "build": "npm run build:js && npm run build:css",
-    "build:css": "node ./scripts/build.css.cjs",
-    "build:js": "node ./scripts/build.js.cjs",
+    "build": "node scripts/build.js",
     "lint": "npm run lint:js && npm run lint:css",
     "lint:css": "csslint src",
     "lint:js": "eslint src",
