@@ -52,18 +52,18 @@ export class Sound extends PsychObject {
    * @param {boolean} [options.autoLog= true] whether or not to log
    */
   constructor({
+    // hamming = true,
+    autoLog = true,
+    loops = 0,
     name,
-    win,
-    value = "C",
     octave = 4,
     secs = 0.5,
     startTime = 0,
-    stopTime = -1,
     stereo = true,
+    stopTime = -1,
+    value = "C",
     volume = 1.0,
-    loops = 0,
-    // hamming = true,
-    autoLog = true,
+    win,
   } = {}) {
     super(win._psychoJS, name);
 
@@ -88,6 +88,43 @@ export class Sound extends PsychObject {
   }
 
   /**
+   * Identify the appropriate player for the sound.
+   *
+   * @protected
+   * @return {SoundPlayer} the appropriate SoundPlayer
+   * @throws {Object.<string, *>} exception if no appropriate SoundPlayer could be found for the sound
+   */
+  _getPlayer() {
+    const acceptFns = [
+      (sound) => TonePlayer.accept(sound),
+      (sound) => TrackPlayer.accept(sound),
+      (sound) => AudioClipPlayer.accept(sound),
+    ];
+
+    for (const acceptFn of acceptFns) {
+      this._player = acceptFn(this);
+      if (typeof this._player !== "undefined") {
+        return this._player;
+      }
+    }
+
+    throw {
+      context: "when finding a player for the sound",
+      error: "could not find an appropriate player.",
+      origin: "SoundPlayer._getPlayer",
+    };
+  }
+
+  /**
+   * Get the duration of the sound, in seconds.
+   *
+   * @return {number} the duration of the sound, in seconds
+   */
+  getDuration() {
+    return this._player.getDuration();
+  }
+
+  /**
    * Start playing the sound.
    *
    * <p> Note: Sounds are played independently from the stimuli of the experiments, i.e. the experiment will not stop until the sound is finished playing.
@@ -102,37 +139,30 @@ export class Sound extends PsychObject {
   }
 
   /**
-   * Stop playing the sound immediately.
+   * Set the number of loops.
    *
-   * @param {Object} options
-   * @param {boolean} [options.log= true] - whether to log
+   * @param {number} [loops=0] - how many times to repeat the sound after it has played once. If loops == -1, the sound will repeat indefinitely until stopped.
+   * @param {boolean} [log=true] - whether to log
    */
-  stop({ log = true } = {}) {
-    this._player.stop();
-    this.status = PsychoJS.Status.STOPPED;
-  }
-
-  /**
-   * Get the duration of the sound, in seconds.
-   *
-   * @return {number} the duration of the sound, in seconds
-   */
-  getDuration() {
-    return this._player.getDuration();
-  }
-
-  /**
-   * Set the playing volume of the sound.
-   *
-   * @param {number} volume - the volume (values should be between 0 and 1)
-   * @param {boolean} [mute= false] - whether or not to mute the sound
-   * @param {boolean} [log= true] - whether to log
-   */
-  setVolume(volume, mute = false, log = true) {
-    this._setAttribute("volume", volume, log);
+  setLoops(loops = 0, log = true) {
+    this._setAttribute("loops", loops, log);
 
     if (typeof this._player !== "undefined") {
-      this._player.setVolume(volume, mute);
+      this._player.setLoops(loops);
+    }
+  }
+
+  /**
+   * Set the duration (in seconds)
+   *
+   * @param {number} [secs=0.5] - duration of the tone (in seconds) If secs == -1, the sound will play indefinitely.
+   * @param {boolean} [log=true] - whether to log
+   */
+  setSecs(secs = 0.5, log = true) {
+    this._setAttribute("secs", secs, log);
+
+    if (typeof this._player !== "undefined") {
+      this._player.setDuration(secs);
     }
   }
 
@@ -145,9 +175,9 @@ export class Sound extends PsychObject {
   setSound(sound, log = true) {
     if (!(sound instanceof Sound)) {
       throw {
-        origin: "Sound.setSound",
         context: "when setting the sound",
         error: "the argument should be an instance of the Sound class.",
+        origin: "Sound.setSound",
       };
     }
 
@@ -171,13 +201,13 @@ export class Sound extends PsychObject {
     this._setAttribute("value", value, log);
 
     const args = {
-      psychoJS: this._psychoJS,
-      stereo: this._stereo,
-      volume: this._volume,
       loops: this._loops,
-      startTime: this._startTime,
-      stopTime: this._stopTime,
+      psychoJS: this._psychoJS,
       secs: this._secs,
+      startTime: this._startTime,
+      stereo: this._stereo,
+      stopTime: this._stopTime,
+      volume: this._volume,
     };
 
     let playerArgs = TonePlayer.accept(value, octave);
@@ -211,65 +241,35 @@ export class Sound extends PsychObject {
     }
 
     throw {
-      origin: "Sound.setValue",
       context: "when setting the sound value",
       error: "could not find an appropriate player.",
+      origin: "Sound.setValue",
     };
   }
 
   /**
-   * Set the number of loops.
+   * Set the playing volume of the sound.
    *
-   * @param {number} [loops=0] - how many times to repeat the sound after it has played once. If loops == -1, the sound will repeat indefinitely until stopped.
-   * @param {boolean} [log=true] - whether to log
+   * @param {number} volume - the volume (values should be between 0 and 1)
+   * @param {boolean} [mute= false] - whether or not to mute the sound
+   * @param {boolean} [log= true] - whether to log
    */
-  setLoops(loops = 0, log = true) {
-    this._setAttribute("loops", loops, log);
+  setVolume(volume, mute = false, log = true) {
+    this._setAttribute("volume", volume, log);
 
     if (typeof this._player !== "undefined") {
-      this._player.setLoops(loops);
+      this._player.setVolume(volume, mute);
     }
   }
 
   /**
-   * Set the duration (in seconds)
+   * Stop playing the sound immediately.
    *
-   * @param {number} [secs=0.5] - duration of the tone (in seconds) If secs == -1, the sound will play indefinitely.
-   * @param {boolean} [log=true] - whether to log
+   * @param {Object} options
+   * @param {boolean} [options.log= true] - whether to log
    */
-  setSecs(secs = 0.5, log = true) {
-    this._setAttribute("secs", secs, log);
-
-    if (typeof this._player !== "undefined") {
-      this._player.setDuration(secs);
-    }
-  }
-
-  /**
-   * Identify the appropriate player for the sound.
-   *
-   * @protected
-   * @return {SoundPlayer} the appropriate SoundPlayer
-   * @throws {Object.<string, *>} exception if no appropriate SoundPlayer could be found for the sound
-   */
-  _getPlayer() {
-    const acceptFns = [
-      (sound) => TonePlayer.accept(sound),
-      (sound) => TrackPlayer.accept(sound),
-      (sound) => AudioClipPlayer.accept(sound),
-    ];
-
-    for (const acceptFn of acceptFns) {
-      this._player = acceptFn(this);
-      if (typeof this._player !== "undefined") {
-        return this._player;
-      }
-    }
-
-    throw {
-      origin: "SoundPlayer._getPlayer",
-      context: "when finding a player for the sound",
-      error: "could not find an appropriate player.",
-    };
+  stop({ log = true } = {}) {
+    this._player.stop();
+    this.status = PsychoJS.Status.STOPPED;
   }
 }

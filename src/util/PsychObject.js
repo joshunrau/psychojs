@@ -53,36 +53,54 @@ export class PsychObject extends EventEmitter {
   }
 
   /**
-   * String representation of the PsychObject.
+   * Add an attribute to this instance (e.g. define setters and getters) and affect a value to it.
    *
-   * Note: attribute values are limited to 50 characters.
-   *
-   * @return {string} the representation
+   * @protected
+   * @param {string} name - the name of the attribute
+   * @param {object} value - the value of the attribute
+   * @param {object} [defaultValue] - the default value for the attribute
+   * @param {function} [onChange] - function called upon changes to the attribute value
    */
-  toString() {
-    let representation = this.constructor.name + "( ";
-    let addComma = false;
-    for (const attribute of this._userAttributes) {
-      if (addComma) {
-        representation += ", ";
-      }
-      addComma = true;
-
-      let value = util.toString(this["_" + attribute]);
-      const l = value.length;
-      if (l > 50) {
-        if (value[l - 1] === ")") {
-          value = value.substring(0, 50) + "~)";
-        } else {
-          value = value.substring(0, 50) + "~";
-        }
-      }
-
-      representation += attribute + "=" + value;
+  _addAttribute(name, value, defaultValue = undefined, onChange = () => {}) {
+    const getPropertyName = "get" + name[0].toUpperCase() + name.substr(1);
+    if (typeof this[getPropertyName] === "undefined") {
+      this[getPropertyName] = () => this["_" + name];
     }
-    representation += " )";
 
-    return representation;
+    const setPropertyName = "set" + name[0].toUpperCase() + name.substr(1);
+    if (typeof this[setPropertyName] === "undefined") {
+      this[setPropertyName] = (value, log = false) => {
+        if (typeof value === "undefined" || value === null) {
+          value = defaultValue;
+        }
+        const hasChanged = this._setAttribute(name, value, log);
+        if (hasChanged) {
+          onChange();
+        }
+      };
+    } else {
+      // deal with default value:
+      if (typeof value === "undefined" || value === null) {
+        value = defaultValue;
+      }
+    }
+
+    Object.defineProperty(this, name, {
+      configurable: true,
+      get() {
+        return this[getPropertyName](); /* return this['_' + name];*/
+      },
+      set(value) {
+        this[setPropertyName](value);
+      },
+    });
+
+    // note: we use this[name] instead of this['_' + name] since a this.set<Name> method may available
+    // in the object, in which case we need to call it
+    this[name] = value;
+    // this['_' + name] = value;
+
+    this._userAttributes.add(name);
   }
 
   /**
@@ -105,8 +123,8 @@ export class PsychObject extends EventEmitter {
     stealth = false,
   ) {
     const response = {
-      origin: "PsychObject.setAttribute",
       context: "when setting the attribute of an object",
+      origin: "PsychObject.setAttribute",
     };
 
     if (typeof attributeName == "undefined") {
@@ -154,23 +172,23 @@ export class PsychObject extends EventEmitter {
               case "":
                 // no change to value;
                 break;
-              case "+":
-                attributeValue = attributeValue.map((v, i) => oldValue[i] + v);
+              case "%":
+                attributeValue = attributeValue.map((v, i) => oldValue[i] % v);
                 break;
               case "*":
                 attributeValue = attributeValue.map((v, i) => oldValue[i] * v);
                 break;
-              case "-":
-                attributeValue = attributeValue.map((v, i) => oldValue[i] - v);
+              case "**":
+                attributeValue = attributeValue.map((v, i) => oldValue[i] ** v);
+                break;
+              case "+":
+                attributeValue = attributeValue.map((v, i) => oldValue[i] + v);
                 break;
               case "/":
                 attributeValue = attributeValue.map((v, i) => oldValue[i] / v);
                 break;
-              case "**":
-                attributeValue = attributeValue.map((v, i) => oldValue[i] ** v);
-                break;
-              case "%":
-                attributeValue = attributeValue.map((v, i) => oldValue[i] % v);
+              case "-":
+                attributeValue = attributeValue.map((v, i) => oldValue[i] - v);
                 break;
               default:
                 throw Object.assign(response, {
@@ -191,23 +209,23 @@ export class PsychObject extends EventEmitter {
               case "":
                 // no change to value;
                 break;
-              case "+":
-                attributeValue = attributeValue.map((v) => oldValue + v);
+              case "%":
+                attributeValue = attributeValue.map((v) => oldValue % v);
                 break;
               case "*":
                 attributeValue = attributeValue.map((v) => oldValue * v);
                 break;
-              case "-":
-                attributeValue = attributeValue.map((v) => oldValue - v);
+              case "**":
+                attributeValue = attributeValue.map((v) => oldValue ** v);
+                break;
+              case "+":
+                attributeValue = attributeValue.map((v) => oldValue + v);
                 break;
               case "/":
                 attributeValue = attributeValue.map((v) => oldValue / v);
                 break;
-              case "**":
-                attributeValue = attributeValue.map((v) => oldValue ** v);
-                break;
-              case "%":
-                attributeValue = attributeValue.map((v) => oldValue % v);
+              case "-":
+                attributeValue = attributeValue.map((v) => oldValue - v);
                 break;
               default:
                 throw Object.assign(response, {
@@ -234,23 +252,23 @@ export class PsychObject extends EventEmitter {
               case "":
                 attributeValue = oldValue.map((v) => attributeValue);
                 break;
-              case "+":
-                attributeValue = oldValue.map((v) => v + attributeValue);
+              case "%":
+                attributeValue = oldValue.map((v) => v % attributeValue);
                 break;
               case "*":
                 attributeValue = oldValue.map((v) => v * attributeValue);
                 break;
-              case "-":
-                attributeValue = oldValue.map((v) => v - attributeValue);
+              case "**":
+                attributeValue = oldValue.map((v) => v ** attributeValue);
+                break;
+              case "+":
+                attributeValue = oldValue.map((v) => v + attributeValue);
                 break;
               case "/":
                 attributeValue = oldValue.map((v) => v / attributeValue);
                 break;
-              case "**":
-                attributeValue = oldValue.map((v) => v ** attributeValue);
-                break;
-              case "%":
-                attributeValue = oldValue.map((v) => v % attributeValue);
+              case "-":
+                attributeValue = oldValue.map((v) => v - attributeValue);
                 break;
               default:
                 throw Object.assign(response, {
@@ -271,23 +289,23 @@ export class PsychObject extends EventEmitter {
               case "":
                 // no change to value;
                 break;
-              case "+":
-                attributeValue = oldValue + attributeValue;
+              case "%":
+                attributeValue = oldValue % attributeValue;
                 break;
               case "*":
                 attributeValue = oldValue * attributeValue;
                 break;
-              case "-":
-                attributeValue = oldValue - attributeValue;
+              case "**":
+                attributeValue = oldValue ** attributeValue;
+                break;
+              case "+":
+                attributeValue = oldValue + attributeValue;
                 break;
               case "/":
                 attributeValue = oldValue / attributeValue;
                 break;
-              case "**":
-                attributeValue = oldValue ** attributeValue;
-                break;
-              case "%":
-                attributeValue = oldValue % attributeValue;
+              case "-":
+                attributeValue = oldValue - attributeValue;
                 break;
               default:
                 throw Object.assign(response, {
@@ -363,53 +381,35 @@ export class PsychObject extends EventEmitter {
   }
 
   /**
-   * Add an attribute to this instance (e.g. define setters and getters) and affect a value to it.
+   * String representation of the PsychObject.
    *
-   * @protected
-   * @param {string} name - the name of the attribute
-   * @param {object} value - the value of the attribute
-   * @param {object} [defaultValue] - the default value for the attribute
-   * @param {function} [onChange] - function called upon changes to the attribute value
+   * Note: attribute values are limited to 50 characters.
+   *
+   * @return {string} the representation
    */
-  _addAttribute(name, value, defaultValue = undefined, onChange = () => {}) {
-    const getPropertyName = "get" + name[0].toUpperCase() + name.substr(1);
-    if (typeof this[getPropertyName] === "undefined") {
-      this[getPropertyName] = () => this["_" + name];
-    }
-
-    const setPropertyName = "set" + name[0].toUpperCase() + name.substr(1);
-    if (typeof this[setPropertyName] === "undefined") {
-      this[setPropertyName] = (value, log = false) => {
-        if (typeof value === "undefined" || value === null) {
-          value = defaultValue;
-        }
-        const hasChanged = this._setAttribute(name, value, log);
-        if (hasChanged) {
-          onChange();
-        }
-      };
-    } else {
-      // deal with default value:
-      if (typeof value === "undefined" || value === null) {
-        value = defaultValue;
+  toString() {
+    let representation = this.constructor.name + "( ";
+    let addComma = false;
+    for (const attribute of this._userAttributes) {
+      if (addComma) {
+        representation += ", ";
       }
+      addComma = true;
+
+      let value = util.toString(this["_" + attribute]);
+      const l = value.length;
+      if (l > 50) {
+        if (value[l - 1] === ")") {
+          value = value.substring(0, 50) + "~)";
+        } else {
+          value = value.substring(0, 50) + "~";
+        }
+      }
+
+      representation += attribute + "=" + value;
     }
+    representation += " )";
 
-    Object.defineProperty(this, name, {
-      configurable: true,
-      get() {
-        return this[getPropertyName](); /* return this['_' + name];*/
-      },
-      set(value) {
-        this[setPropertyName](value);
-      },
-    });
-
-    // note: we use this[name] instead of this['_' + name] since a this.set<Name> method may available
-    // in the object, in which case we need to call it
-    this[name] = value;
-    // this['_' + name] = value;
-
-    this._userAttributes.add(name);
+    return representation;
   }
 }

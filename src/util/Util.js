@@ -205,8 +205,8 @@ export function detectBrowser() {
  */
 export function toNumerical(obj) {
   const response = {
-    origin: "util.toNumerical",
     context: "when converting an object to its numerical form",
+    origin: "util.toNumerical",
   };
 
   try {
@@ -372,8 +372,8 @@ export function randchoice(array, randomNumberGenerator = undefined) {
  */
 export function getPositionFromObject(object, units) {
   const response = {
-    origin: "util.getPositionFromObject",
     context: "when getting the position of an object",
+    origin: "util.getPositionFromObject",
   };
 
   try {
@@ -408,8 +408,8 @@ export function getPositionFromObject(object, units) {
  */
 export function to_px(pos, posUnit, win, integerCoordinates = false) {
   const response = {
-    origin: "util.to_px",
     context: "when converting a position to pixel units",
+    origin: "util.to_px",
   };
 
   let pos_px;
@@ -444,8 +444,8 @@ export function to_px(pos, posUnit, win, integerCoordinates = false) {
  */
 export function to_norm(pos, posUnit, win) {
   const response = {
-    origin: "util.to_norm",
     context: "when converting a position to norm units",
+    origin: "util.to_norm",
   };
 
   if (posUnit === "norm") {
@@ -477,8 +477,8 @@ export function to_norm(pos, posUnit, win) {
  */
 export function to_height(pos, posUnit, win) {
   const response = {
-    origin: "util.to_height",
     context: "when converting a position to height units",
+    origin: "util.to_height",
   };
 
   if (posUnit === "height") {
@@ -511,8 +511,8 @@ export function to_height(pos, posUnit, win) {
  */
 export function to_win(pos, posUnit, win) {
   const response = {
-    origin: "util.to_win",
     context: "when converting a position to window units",
+    origin: "util.to_win",
   };
 
   try {
@@ -528,7 +528,7 @@ export function to_win(pos, posUnit, win) {
 
     throw `unknown window units: ${win._units}`;
   } catch (error) {
-    throw Object.assign(response, { response, error });
+    throw Object.assign(response, { error, response });
   }
 }
 
@@ -543,8 +543,8 @@ export function to_win(pos, posUnit, win) {
  */
 export function to_unit(pos, posUnit, win, targetUnit) {
   const response = {
-    origin: "util.to_unit",
     context: "when converting a position to different units",
+    origin: "util.to_unit",
   };
 
   try {
@@ -756,9 +756,9 @@ export function selectFromArray(array, selection) {
     }
   } else {
     throw {
-      origin: "selectFromArray",
       context: "when selecting entries from an array",
       error: "unknown selection type: " + typeof selection,
+      origin: "selectFromArray",
     };
   }
 }
@@ -895,9 +895,9 @@ export function randint(min = 0, max) {
 
   if (hi < lo) {
     throw {
-      origin: "util.randint",
       context: "when generating a random integer",
       error: "min should be <= max",
+      origin: "util.randint",
     };
   }
 
@@ -975,8 +975,8 @@ export function average(input = []) {
  */
 export function sort(input) {
   const response = {
-    origin: "util.sort",
     context: "when sorting the elements of an array",
+    origin: "util.sort",
   };
 
   try {
@@ -1015,12 +1015,12 @@ export function sort(input) {
  */
 export function range(...args) {
   const response = {
-    origin: "util.range",
     context: "when building a range of numbers",
+    origin: "util.range",
   };
 
   try {
-    let start, stop, step;
+    let start, step, stop;
 
     switch (args.length) {
       case 0:
@@ -1088,9 +1088,9 @@ export function range(...args) {
  */
 function _match(value) {
   const response = {
-    origin: "util._match",
     context:
       "when creating a function that compares an input element to the given value",
+    origin: "util._match",
   };
 
   try {
@@ -1140,9 +1140,9 @@ function _match(value) {
  */
 export function count(input, value) {
   const response = {
-    origin: "util.count",
     context:
       "when counting how many elements in the input array match the given value",
+    origin: "util.count",
   };
 
   try {
@@ -1195,9 +1195,9 @@ export function pad(n, width = 2) {
  */
 export function index(input, value) {
   const response = {
-    origin: "util.index",
     context:
       "when getting the index in the input array of the first element that matches the given value",
+    origin: "util.index",
   };
 
   try {
@@ -1355,7 +1355,7 @@ export function hasTouchScreen() {
  * @enum
  */
 export const TEXT_DIRECTION = {
+  Arabic: "rtl",
   LTR: "ltr",
   RTL: "rtl",
-  Arabic: "rtl",
 };

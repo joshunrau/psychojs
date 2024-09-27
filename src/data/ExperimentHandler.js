@@ -7,6 +7,7 @@
  */
 
 import * as XLSX from "xlsx";
+
 import { MonotonicClock } from "../util/Clock.js";
 import { PsychObject } from "../util/PsychObject.js";
 import * as util from "../util/Util.js";
@@ -20,37 +21,12 @@ import * as util from "../util/Util.js";
  */
 export class ExperimentHandler extends PsychObject {
   /**
-   * Getter for experimentEnded.
-   */
-  get experimentEnded() {
-    return this._experimentEnded;
-  }
-
-  /**
-   * Setter for experimentEnded.
-   */
-  set experimentEnded(ended) {
-    this._experimentEnded = ended;
-  }
-
-  /**
-   * Legacy experiment getters.
-   */
-  get _thisEntry() {
-    return this._currentTrialData;
-  }
-
-  get _entries() {
-    return this._trialsData;
-  }
-
-  /**
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
    * @param {string} options.name - name of the experiment
    * @param {Object} options.extraInfo - additional information, such as session name, participant name, etc.
    */
-  constructor({ psychoJS, name, extraInfo, dataFileName } = {}) {
+  constructor({ dataFileName, extraInfo, name, psychoJS } = {}) {
     super(psychoJS, name);
 
     this._addAttribute("extraInfo", extraInfo);
@@ -96,40 +72,93 @@ export class ExperimentHandler extends PsychObject {
   }
 
   /**
-   * Whether or not the current entry (i.e. trial data) is empty.
-   * Note: this is mostly useful at the end of an experiment, in order to ensure that the last entry is saved.
+   * Get the attribute names and values for the current trial of a given loop.
+   *  Only info relating to the trial execution are returned.
    *
-   * @returns {boolean} whether or not the current entry is empty
-   * @todo This really should be renamed: IsCurrentEntryNotEmpty
+   * @protected
+   * @param {Object} loop - the loop
    */
-  isEntryEmpty() {
-    return Object.keys(this._currentTrialData).length > 0;
-  }
-
-  /**
-   * Add a loop.
-   *
-   *  The loop might be a {@link TrialHandler}, for instance.
-   *  Data from this loop will be included in the resulting data files.
-   *
-   * @param {Object} loop - the loop, e.g. an instance of TrialHandler or StairHandler
-   */
-  addLoop(loop) {
-    this._loops.push(loop);
-    this._unfinishedLoops.push(loop);
-    loop.experimentHandler = this;
-  }
-
-  /**
-   * Remove the given loop from the list of unfinished loops, e.g. when it has completed.
-   *
-   * @param {Object} loop - the loop, e.g. an instance of TrialHandler or StairHandler
-   */
-  removeLoop(loop) {
-    const index = this._unfinishedLoops.indexOf(loop);
-    if (index !== -1) {
-      this._unfinishedLoops.splice(index, 1);
+  static _getLoopAttributes(loop) {
+    // standard trial attributes:
+    const properties = [
+      "thisRepN",
+      "thisTrialN",
+      "thisN",
+      "thisIndex",
+      "stepSizeCurrent",
+      "ran",
+      "order",
+    ];
+    let attributes = {};
+    const loopName = loop.name;
+    for (const loopProperty in loop) {
+      if (properties.includes(loopProperty)) {
+        const key =
+          loopProperty === "stepSizeCurrent"
+            ? loopName + ".stepSize"
+            : loopName + "." + loopProperty;
+        attributes[key] = loop[loopProperty];
+      }
     }
+
+    // specific trial attributes:
+    if (typeof loop.getCurrentTrial === "function") {
+      const currentTrial = loop.getCurrentTrial();
+      for (const trialProperty in currentTrial) {
+        attributes[trialProperty] = currentTrial[trialProperty];
+      }
+    }
+
+    /* TODO
+		// method of constants
+		if hasattr(loop, 'thisTrial'):
+				trial = loop.thisTrial
+				if hasattr(trial,'items'):#is a TrialList object or a simple dict
+						for property,val in trial.items():
+								if property not in self._paramNamesSoFar:
+										self._paramNamesSoFar.append(property)
+								names.append(property)
+								vals.append(val)
+				elif trial==[]:#we haven't had 1st trial yet? Not actually sure why this occasionally happens (JWP)
+						pass
+				else:
+						names.append(loopName+'.thisTrial')
+						vals.append(trial)
+
+		// single StairHandler
+		elif hasattr(loop, 'intensities'):
+				names.append(loopName+'.intensity')
+				if len(loop.intensities)>0:
+						vals.append(loop.intensities[-1])
+				else:
+						vals.append(None)*/
+
+    return attributes;
+  }
+
+  get _entries() {
+    return this._trialsData;
+  }
+
+  /**
+   * Legacy experiment getters.
+   */
+  get _thisEntry() {
+    return this._currentTrialData;
+  }
+
+  /**
+   * Getter for experimentEnded.
+   */
+  get experimentEnded() {
+    return this._experimentEnded;
+  }
+
+  /**
+   * Setter for experimentEnded.
+   */
+  set experimentEnded(ended) {
+    this._experimentEnded = ended;
   }
 
   /**
@@ -152,6 +181,43 @@ export class ExperimentHandler extends PsychObject {
     }
 
     this._currentTrialData[key] = value;
+  }
+
+  /**
+   * Add a loop.
+   *
+   *  The loop might be a {@link TrialHandler}, for instance.
+   *  Data from this loop will be included in the resulting data files.
+   *
+   * @param {Object} loop - the loop, e.g. an instance of TrialHandler or StairHandler
+   */
+  addLoop(loop) {
+    this._loops.push(loop);
+    this._unfinishedLoops.push(loop);
+    loop.experimentHandler = this;
+  }
+
+  /**
+   * Get the results of the experiment as a .csv string, ready to be uploaded or stored.
+   *
+   * @return {string} a .csv representation of the experiment results.
+   */
+  getResultAsCsv() {
+    // note: we use the XLSX library as it automatically deals with header, takes care of quotes,
+    // newlines, etc.
+    const worksheet = XLSX.utils.json_to_sheet(this._trialsData);
+    return "\ufeff" + XLSX.utils.sheet_to_csv(worksheet);
+  }
+
+  /**
+   * Whether or not the current entry (i.e. trial data) is empty.
+   * Note: this is mostly useful at the end of an experiment, in order to ensure that the last entry is saved.
+   *
+   * @returns {boolean} whether or not the current entry is empty
+   * @todo This really should be renamed: IsCurrentEntryNotEmpty
+   */
+  isEntryEmpty() {
+    return Object.keys(this._currentTrialData).length > 0;
   }
 
   /**
@@ -202,6 +268,18 @@ export class ExperimentHandler extends PsychObject {
   }
 
   /**
+   * Remove the given loop from the list of unfinished loops, e.g. when it has completed.
+   *
+   * @param {Object} loop - the loop, e.g. an instance of TrialHandler or StairHandler
+   */
+  removeLoop(loop) {
+    const index = this._unfinishedLoops.indexOf(loop);
+    if (index !== -1) {
+      this._unfinishedLoops.splice(index, 1);
+    }
+  }
+
+  /**
    * Save the results of the experiment.
    *
    * <ul>
@@ -216,7 +294,7 @@ export class ExperimentHandler extends PsychObject {
    * @param {string} [options.tag=''] - an optional tag to add to the filename to which the data is saved (for CSV and XLSX saving options)
    * @param {boolean} [options.clear=false] - whether to clear all experiment results immediately after they are saved (this is useful when saving data in separate chunks, throughout an experiment)
    */
-  async save({ attributes = [], sync = false, tag = "", clear = false } = {}) {
+  async save({ attributes = [], clear = false, sync = false, tag = "" } = {}) {
     this._psychoJS.logger.info("[PsychoJS] Save experiment results.");
 
     // get attributes:
@@ -309,11 +387,11 @@ export class ExperimentHandler extends PsychObject {
 
       for (let r = 0; r < data.length; r++) {
         const doc = {
-          __projectId,
+          __datetime: this._datetime,
           __experimentName: this._experimentName,
           __participant: this._participant,
+          __projectId,
           __session: this._session,
-          __datetime: this._datetime,
         };
         for (let h = 0; h < attributes.length; h++) {
           doc[attributes[h]] = data[r][attributes[h]];
@@ -344,83 +422,6 @@ export class ExperimentHandler extends PsychObject {
       }
     }
   }
-
-  /**
-   * Get the results of the experiment as a .csv string, ready to be uploaded or stored.
-   *
-   * @return {string} a .csv representation of the experiment results.
-   */
-  getResultAsCsv() {
-    // note: we use the XLSX library as it automatically deals with header, takes care of quotes,
-    // newlines, etc.
-    const worksheet = XLSX.utils.json_to_sheet(this._trialsData);
-    return "\ufeff" + XLSX.utils.sheet_to_csv(worksheet);
-  }
-
-  /**
-   * Get the attribute names and values for the current trial of a given loop.
-   *  Only info relating to the trial execution are returned.
-   *
-   * @protected
-   * @param {Object} loop - the loop
-   */
-  static _getLoopAttributes(loop) {
-    // standard trial attributes:
-    const properties = [
-      "thisRepN",
-      "thisTrialN",
-      "thisN",
-      "thisIndex",
-      "stepSizeCurrent",
-      "ran",
-      "order",
-    ];
-    let attributes = {};
-    const loopName = loop.name;
-    for (const loopProperty in loop) {
-      if (properties.includes(loopProperty)) {
-        const key =
-          loopProperty === "stepSizeCurrent"
-            ? loopName + ".stepSize"
-            : loopName + "." + loopProperty;
-        attributes[key] = loop[loopProperty];
-      }
-    }
-
-    // specific trial attributes:
-    if (typeof loop.getCurrentTrial === "function") {
-      const currentTrial = loop.getCurrentTrial();
-      for (const trialProperty in currentTrial) {
-        attributes[trialProperty] = currentTrial[trialProperty];
-      }
-    }
-
-    /* TODO
-		// method of constants
-		if hasattr(loop, 'thisTrial'):
-				trial = loop.thisTrial
-				if hasattr(trial,'items'):#is a TrialList object or a simple dict
-						for property,val in trial.items():
-								if property not in self._paramNamesSoFar:
-										self._paramNamesSoFar.append(property)
-								names.append(property)
-								vals.append(val)
-				elif trial==[]:#we haven't had 1st trial yet? Not actually sure why this occasionally happens (JWP)
-						pass
-				else:
-						names.append(loopName+'.thisTrial')
-						vals.append(trial)
-
-		// single StairHandler
-		elif hasattr(loop, 'intensities'):
-				names.append(loopName+'.intensity')
-				if len(loop.intensities)>0:
-						vals.append(loop.intensities[-1])
-				else:
-						vals.append(None)*/
-
-    return attributes;
-  }
 }
 
 /**
@@ -448,6 +449,6 @@ ExperimentHandler.SaveFormat = {
  * @readonly
  */
 ExperimentHandler.Environment = {
-  SERVER: Symbol.for("SERVER"),
   LOCAL: Symbol.for("LOCAL"),
+  SERVER: Symbol.for("SERVER"),
 };

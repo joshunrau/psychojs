@@ -27,30 +27,30 @@ export class StairHandler extends TrialHandler {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    psychoJS,
-    varName,
-    startVal,
-    minVal,
-    maxVal,
-    nTrials,
-    nReversals,
-    nUp,
-    nDown,
     applyInitialRule,
+    autoLog,
+    extraArgs,
+    fromMultiStair,
+    maxVal,
+    minVal,
+    name,
+    nDown,
+    nReversals,
+    nTrials,
+    nUp,
+    psychoJS,
+    startVal,
     stepSizes,
     stepType,
-    name,
-    autoLog,
-    fromMultiStair,
-    extraArgs,
+    varName,
   } = {}) {
     super({
-      psychoJS,
-      name,
       autoLog,
       method: TrialHandler.Method.SEQUENTIAL,
-      trialList: Array(nTrials),
+      name,
       nReps: 1,
+      psychoJS,
+      trialList: Array(nTrials),
     });
 
     this._addAttribute("varName", varName);
@@ -98,77 +98,6 @@ export class StairHandler extends TrialHandler {
   }
 
   /**
-   * Add a response and advance the staircase.
-   *
-   * @param{number} response	- the response to the trial, must be either 0 (incorrect or
-   * non-detected) or 1 (correct or detected)
-   * @param{number | undefined} value - optional intensity / contrast / threshold
-   * @param{boolean} [doAddData = true] - whether to add the response as data to the
-   * 	experiment
-   */
-  addResponse(response, value, doAddData = true) {
-    this._psychoJS.logger.debug(`response= ${response}`);
-
-    // check that response is either 0 or 1:
-    if (response !== 0 && response !== 1) {
-      throw {
-        origin: "StairHandler.addResponse",
-        context: "when adding a trial response",
-        error: `the response must be either 0 or 1, got: ${JSON.stringify(response)}`,
-      };
-    }
-
-    if (doAddData) {
-      this._psychoJS.experiment.addData(this._name + ".response", response);
-    }
-
-    this._data.push(response);
-
-    // replace the last value with this one, if need be:
-    if (typeof value !== "undefined") {
-      this._values.pop();
-      this._values.push(value);
-    }
-
-    // update correctCounter:
-    if (response === 1) {
-      if (this._data.length > 1 && this._data.at(-2) === response) {
-        ++this._correctCounter;
-      } else {
-        // reset the counter:
-        this._correctCounter = 1;
-      }
-    }
-
-    // incorrect response:
-    else {
-      if (this._data.length > 1 && this._data.at(-2) === response) {
-        --this._correctCounter;
-      } else {
-        // reset the counter:
-        this._correctCounter = -1;
-      }
-    }
-
-    if (!this._finished) {
-      this.next();
-
-      // estimate the next value
-      // (and update the trial list and snapshots):
-      this._estimateStairValue();
-    }
-  }
-
-  /**
-   * Get the current value of the variable / contrast / threshold.
-   *
-   * @returns {number} the current value
-   */
-  getStairValue() {
-    return this._stairValue;
-  }
-
-  /**
    * Get the current value of the variable / contrast / threshold.
    *
    * This is the getter associated to getStairValue.
@@ -177,6 +106,37 @@ export class StairHandler extends TrialHandler {
    */
   get intensity() {
     return this.getStairValue();
+  }
+
+  /**
+   * Decrease the current value of the variable / contrast / threshold.
+   *
+   * @protected
+   */
+  _decreaseValue() {
+    this._psychoJS.logger.debug(
+      `stepType= ${this._stepType.toString()}, currentStepSize= ${this._currentStepSize}, stairValue (before update)= ${this._stairValue}`,
+    );
+
+    this._correctCounter = 0;
+
+    switch (this._stepType) {
+      case StairHandler.StepType.DB:
+        this._stairValue /= Math.pow(10.0, this._currentStepSize / 20.0);
+        break;
+      case StairHandler.StepType.LOG:
+        this._stairValue /= Math.pow(10.0, this._currentStepSize);
+        break;
+      case StairHandler.StepType.LINEAR:
+      default:
+        this._stairValue -= this._currentStepSize;
+        break;
+    }
+
+    // make sure we do not go beyond the minimum value:
+    if (this._stairValue < this._minVal) {
+      this._stairValue = this._minVal;
+    }
   }
 
   /**
@@ -285,35 +245,6 @@ export class StairHandler extends TrialHandler {
   }
 
   /**
-   * Update the next undefined trial in the trial list, and the associated snapshot.
-   *
-   * @protected
-   */
-  _updateTrialList() {
-    // if this StairHandler was instantiated from a MultiStairHandler, we do not update the trial list here,
-    // since it is updated by the MultiStairHandler instead
-    if (this._fromMultiStair) {
-      return;
-    }
-
-    for (let t = 0; t < this._trialList.length; ++t) {
-      if (typeof this._trialList[t] === "undefined") {
-        this._trialList[t] = { [this._varName]: this._stairValue };
-
-        this._psychoJS.logger.debug(
-          `updated the trialList at: ${t}: ${JSON.stringify(this._trialList[t])}`,
-        );
-
-        if (typeof this._snapshots[t] !== "undefined") {
-          this._snapshots[t][this._varName] = this._stairValue;
-          this._snapshots[t].trialAttributes.push(this._varName);
-        }
-        break;
-      }
-    }
-  }
-
-  /**
    * Increase the current value of the variable / contrast / threshold.
    *
    * @protected
@@ -345,34 +276,103 @@ export class StairHandler extends TrialHandler {
   }
 
   /**
-   * Decrease the current value of the variable / contrast / threshold.
+   * Update the next undefined trial in the trial list, and the associated snapshot.
    *
    * @protected
    */
-  _decreaseValue() {
-    this._psychoJS.logger.debug(
-      `stepType= ${this._stepType.toString()}, currentStepSize= ${this._currentStepSize}, stairValue (before update)= ${this._stairValue}`,
-    );
-
-    this._correctCounter = 0;
-
-    switch (this._stepType) {
-      case StairHandler.StepType.DB:
-        this._stairValue /= Math.pow(10.0, this._currentStepSize / 20.0);
-        break;
-      case StairHandler.StepType.LOG:
-        this._stairValue /= Math.pow(10.0, this._currentStepSize);
-        break;
-      case StairHandler.StepType.LINEAR:
-      default:
-        this._stairValue -= this._currentStepSize;
-        break;
+  _updateTrialList() {
+    // if this StairHandler was instantiated from a MultiStairHandler, we do not update the trial list here,
+    // since it is updated by the MultiStairHandler instead
+    if (this._fromMultiStair) {
+      return;
     }
 
-    // make sure we do not go beyond the minimum value:
-    if (this._stairValue < this._minVal) {
-      this._stairValue = this._minVal;
+    for (let t = 0; t < this._trialList.length; ++t) {
+      if (typeof this._trialList[t] === "undefined") {
+        this._trialList[t] = { [this._varName]: this._stairValue };
+
+        this._psychoJS.logger.debug(
+          `updated the trialList at: ${t}: ${JSON.stringify(this._trialList[t])}`,
+        );
+
+        if (typeof this._snapshots[t] !== "undefined") {
+          this._snapshots[t][this._varName] = this._stairValue;
+          this._snapshots[t].trialAttributes.push(this._varName);
+        }
+        break;
+      }
     }
+  }
+
+  /**
+   * Add a response and advance the staircase.
+   *
+   * @param{number} response	- the response to the trial, must be either 0 (incorrect or
+   * non-detected) or 1 (correct or detected)
+   * @param{number | undefined} value - optional intensity / contrast / threshold
+   * @param{boolean} [doAddData = true] - whether to add the response as data to the
+   * 	experiment
+   */
+  addResponse(response, value, doAddData = true) {
+    this._psychoJS.logger.debug(`response= ${response}`);
+
+    // check that response is either 0 or 1:
+    if (response !== 0 && response !== 1) {
+      throw {
+        context: "when adding a trial response",
+        error: `the response must be either 0 or 1, got: ${JSON.stringify(response)}`,
+        origin: "StairHandler.addResponse",
+      };
+    }
+
+    if (doAddData) {
+      this._psychoJS.experiment.addData(this._name + ".response", response);
+    }
+
+    this._data.push(response);
+
+    // replace the last value with this one, if need be:
+    if (typeof value !== "undefined") {
+      this._values.pop();
+      this._values.push(value);
+    }
+
+    // update correctCounter:
+    if (response === 1) {
+      if (this._data.length > 1 && this._data.at(-2) === response) {
+        ++this._correctCounter;
+      } else {
+        // reset the counter:
+        this._correctCounter = 1;
+      }
+    }
+
+    // incorrect response:
+    else {
+      if (this._data.length > 1 && this._data.at(-2) === response) {
+        --this._correctCounter;
+      } else {
+        // reset the counter:
+        this._correctCounter = -1;
+      }
+    }
+
+    if (!this._finished) {
+      this.next();
+
+      // estimate the next value
+      // (and update the trial list and snapshots):
+      this._estimateStairValue();
+    }
+  }
+
+  /**
+   * Get the current value of the variable / contrast / threshold.
+   *
+   * @returns {number} the current value
+   */
+  getStairValue() {
+    return this._stairValue;
   }
 }
 
@@ -395,7 +395,7 @@ StairHandler.StepType = {
  * @readonly
  */
 StairHandler.Direction = {
+  DOWN: Symbol.for("DOWN"),
   START: Symbol.for("START"),
   UP: Symbol.for("UP"),
-  DOWN: Symbol.for("DOWN"),
 };

@@ -30,8 +30,8 @@ export class Color {
    */
   constructor(obj = "black", colorspace = Color.COLOR_SPACE.RGB) {
     const response = {
-      origin: "Color",
       context: "when defining a color",
+      origin: "Color",
     };
 
     // named color (e.g. 'seagreen') or string hexadecimal representation (e.g. '#FF0000'):
@@ -87,22 +87,22 @@ export class Color {
 
       // get RGB components:
       switch (colorspace) {
-        case Color.COLOR_SPACE.RGB255:
-          Color._checkTypeAndRange(obj, [0, 255]);
-          this._rgb = [a / 255.0, b / 255.0, c / 255.0];
+        case Color.COLOR_SPACE.DKL:
+          break;
+
+        case Color.COLOR_SPACE.HSV:
+          break;
+
+        case Color.COLOR_SPACE.LMS:
           break;
 
         case Color.COLOR_SPACE.RGB:
           this._rgb = [a, b, c];
           break;
 
-        case Color.COLOR_SPACE.HSV:
-          break;
-
-        case Color.COLOR_SPACE.DKL:
-          break;
-
-        case Color.COLOR_SPACE.LMS:
+        case Color.COLOR_SPACE.RGB255:
+          Color._checkTypeAndRange(obj, [0, 255]);
+          this._rgb = [a / 255.0, b / 255.0, c / 255.0];
           break;
 
         default:
@@ -115,303 +115,6 @@ export class Color {
     }
 
     this._rgbFull = this._rgb.map((c) => c * 2 - 1);
-  }
-
-  /**
-   * Get the [0,1] RGB triplet equivalent of this Color.
-   *
-   * @return {Array.<number>} the [0,1] RGB triplet equivalent
-   */
-  get rgb() {
-    return this._rgb;
-  }
-
-  /**
-   * Get the [-1,1] RGB triplet equivalent of this Color.
-   *
-   * @return {Array.<number>} the [-1,1] RGB triplet equivalent
-   */
-  get rgbFull() {
-    return this._rgbFull;
-  }
-
-  /**
-   * Get the [0,255] RGB triplet equivalent of this Color.
-   *
-   * @return {Array.<number>} the [0,255] RGB triplet equivalent
-   */
-  get rgb255() {
-    return [
-      Math.round(this._rgb[0] * 255.0),
-      Math.round(this._rgb[1] * 255.0),
-      Math.round(this._rgb[2] * 255.0),
-    ];
-  }
-
-  /**
-   * Get the hexadecimal color code equivalent of this Color.
-   *
-   * @return {string} the hexadecimal color code equivalent
-   */
-  get hex() {
-    if (typeof this._hex === "undefined") {
-      this._hex = Color._rgbToHex(this._rgb);
-    }
-    return this._hex;
-  }
-
-  /**
-   * Get the integer code equivalent of this Color.
-   *
-   * @return {number} the integer code equivalent
-   */
-  get int() {
-    if (typeof this._int === "undefined") {
-      this._int = Color._rgbToInt(this._rgb);
-    }
-    return this._int;
-  }
-
-  /*
-	get hsv() {
-		if (typeof this._hsv === 'undefined')
-			this._hsv = Color._rgbToHsv(this._rgb);
-		return this._hsv;
-	}
-	get dkl() {
-		if (typeof this._dkl === 'undefined')
-			this._dkl = Color._rgbToDkl(this._rgb);
-		return this._dkl;
-	}
-	get lms() {
-		if (typeof this._lms === 'undefined')
-			this._lms = Color._rgbToLms(this._rgb);
-		return this._lms;
-	}
-	*/
-
-  /**
-   * String representation of the color, i.e. the hexadecimal representation.
-   *
-   * @return {string} the representation.
-   */
-  toString() {
-    return this.hex;
-  }
-
-  /**
-   * Get the [0,255] RGB triplet equivalent of the hexadecimal color code.
-   *
-   * @param {string} hex - the hexadecimal color code
-   * @return {Array.<number>} the [0,255] RGB triplet equivalent
-   */
-  static hexToRgb255(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (result == null) {
-      throw {
-        origin: "Color.hexToRgb255",
-        context:
-          "when converting an hexadecimal color code to its 255- or [0,1]-based RGB color representation",
-        error: "unable to parse the argument: wrong type or wrong code",
-      };
-    }
-
-    return [
-      parseInt(result[1], 16),
-      parseInt(result[2], 16),
-      parseInt(result[3], 16),
-    ];
-  }
-
-  /**
-   * Get the [0,1] RGB triplet equivalent of the hexadecimal color code.
-   *
-   * @param {string} hex - the hexadecimal color code
-   * @return {Array.<number>} the [0,1] RGB triplet equivalent
-   */
-  static hexToRgb(hex) {
-    const [r255, g255, b255] = Color.hexToRgb255(hex);
-    return [r255 / 255.0, g255 / 255.0, b255 / 255.0];
-  }
-
-  /**
-   * Get the hexadecimal color code equivalent of the [0, 255] RGB triplet.
-   *
-   * @param {Array.<number>} rgb255 - the [0, 255] RGB triplet
-   * @return {string} the hexadecimal color code equivalent
-   */
-  static rgb255ToHex(rgb255) {
-    const response = {
-      origin: "Color.rgb255ToHex",
-      context:
-        "when converting an rgb triplet to its hexadecimal color representation",
-    };
-
-    try {
-      Color._checkTypeAndRange(rgb255, [0, 255]);
-      return Color._rgb255ToHex(rgb255);
-    } catch (error) {
-      throw Object.assign(response, { error });
-    }
-  }
-
-  /**
-   * Get the hexadecimal color code equivalent of the [0, 1] RGB triplet.
-   *
-   * @param {Array.<number>} rgb - the [0, 1] RGB triplet
-   * @return {string} the hexadecimal color code equivalent
-   */
-  static rgbToHex(rgb) {
-    const response = {
-      origin: "Color.rgbToHex",
-      context:
-        "when converting an rgb triplet to its hexadecimal color representation",
-    };
-
-    try {
-      Color._checkTypeAndRange(rgb, [0, 1]);
-      return Color._rgbToHex(rgb);
-    } catch (error) {
-      throw Object.assign(response, { error });
-    }
-  }
-
-  /**
-   * Get the integer equivalent of the [0, 1] RGB triplet.
-   *
-   * @param {Array.<number>} rgb - the [0, 1] RGB triplet
-   * @return {number} the integer equivalent
-   */
-  static rgbToInt(rgb) {
-    const response = {
-      origin: "Color.rgbToInt",
-      context: "when converting an rgb triplet to its integer representation",
-    };
-
-    try {
-      Color._checkTypeAndRange(rgb, [0, 1]);
-      return Color._rgbToInt(rgb);
-    } catch (error) {
-      throw Object.assign(response, { error });
-    }
-  }
-
-  /**
-   * Get the integer equivalent of the [0, 255] RGB triplet.
-   *
-   * @param {Array.<number>} rgb255 - the [0, 255] RGB triplet
-   * @return {number} the integer equivalent
-   */
-  static rgb255ToInt(rgb255) {
-    const response = {
-      origin: "Color.rgb255ToInt",
-      context: "when converting an rgb triplet to its integer representation",
-    };
-    try {
-      Color._checkTypeAndRange(rgb255, [0, 255]);
-      return Color._rgb255ToInt(rgb255);
-    } catch (error) {
-      throw Object.assign(response, { error });
-    }
-  }
-
-  /**
-   * Get the hexadecimal color code equivalent of the [0, 255] RGB triplet.
-   *
-   * Note: this is the fast, unsafe version which does not check for argument sanity
-   *
-   * @protected
-   * @param {Array.<number>} rgb255 - the [0, 255] RGB triplet
-   * @return {string} the hexadecimal color code equivalent
-   */
-  static _rgb255ToHex(rgb255) {
-    return (
-      "#" +
-      ((1 << 24) + (rgb255[0] << 16) + (rgb255[1] << 8) + rgb255[2])
-        .toString(16)
-        .slice(1)
-    );
-  }
-
-  /**
-   * Get the hexadecimal color code equivalent of the [0, 1] RGB triplet.
-   *
-   * Note: this is the fast, unsafe version which does not check for argument sanity
-   *
-   * @protected
-   * @param {Array.<number>} rgb - the [0, 1] RGB triplet
-   * @return {string} the hexadecimal color code equivalent
-   */
-  static _rgbToHex(rgb) {
-    const rgb255 = [
-      Math.round(rgb[0] * 255),
-      Math.round(rgb[1] * 255),
-      Math.round(rgb[2] * 255),
-    ];
-    return Color._rgb255ToHex(rgb255);
-  }
-
-  /**
-   * Get the integer equivalent of the [0, 1] RGB triplet.
-   *
-   * Note: this is the fast, unsafe version which does not check for argument sanity
-   *
-   * @protected
-   * @param {Array.<number>} rgb - the [0, 1] RGB triplet
-   * @return {number} the integer equivalent
-   */
-  static _rgbToInt(rgb) {
-    const rgb255 = [
-      Math.round(rgb[0] * 255),
-      Math.round(rgb[1] * 255),
-      Math.round(rgb[2] * 255),
-    ];
-    return Color._rgb255ToInt(rgb255);
-  }
-
-  /**
-   * Get the integer equivalent of the [0, 255] RGB triplet.
-   *
-   * Note: this is the fast, unsafe version which does not check for argument sanity
-   *
-   * @protected
-   * @param {Array.<number>} rgb255 - the [0, 255] RGB triplet
-   * @return {number} the integer equivalent
-   */
-  static _rgb255ToInt(rgb255) {
-    return rgb255[0] * 0x10000 + rgb255[1] * 0x100 + rgb255[2];
-  }
-
-  /**
-   * Get the [0, 255] based RGB triplet equivalent of the integer color code.
-   *
-   * Note: this is the fast, unsafe version which does not check for argument sanity
-   *
-   * @protected
-   * @param {number} hex - the integer color code
-   * @return {Array.<number>} the [0, 255] RGB equivalent
-   */
-  static _intToRgb255(hex) {
-    const r255 = hex >>> 0x10;
-    const g255 = (hex & 0xff00) / 0x100;
-    const b255 = hex & 0xff;
-
-    return [r255, g255, b255];
-  }
-
-  /**
-   * Get the [0, 1] based RGB triplet equivalent of the integer color code.
-   *
-   * Note: this is the fast, unsafe version which does not check for argument sanity
-   *
-   * @protected
-   * @param {number} hex - the integer color code
-   * @return {Array.<number>} the [0, 1] RGB equivalent
-   */
-  static _intToRgb(hex) {
-    const [r255, g255, b255] = Color._intToRgb255(hex);
-
-    return [r255 / 255.0, g255 / 255.0, b255 / 255.0];
   }
 
   /**
@@ -450,6 +153,303 @@ export class Color {
         "]"
       );
     }
+  }
+
+  /**
+   * Get the [0, 1] based RGB triplet equivalent of the integer color code.
+   *
+   * Note: this is the fast, unsafe version which does not check for argument sanity
+   *
+   * @protected
+   * @param {number} hex - the integer color code
+   * @return {Array.<number>} the [0, 1] RGB equivalent
+   */
+  static _intToRgb(hex) {
+    const [r255, g255, b255] = Color._intToRgb255(hex);
+
+    return [r255 / 255.0, g255 / 255.0, b255 / 255.0];
+  }
+
+  /**
+   * Get the [0, 255] based RGB triplet equivalent of the integer color code.
+   *
+   * Note: this is the fast, unsafe version which does not check for argument sanity
+   *
+   * @protected
+   * @param {number} hex - the integer color code
+   * @return {Array.<number>} the [0, 255] RGB equivalent
+   */
+  static _intToRgb255(hex) {
+    const r255 = hex >>> 0x10;
+    const g255 = (hex & 0xff00) / 0x100;
+    const b255 = hex & 0xff;
+
+    return [r255, g255, b255];
+  }
+
+  /**
+   * Get the hexadecimal color code equivalent of the [0, 255] RGB triplet.
+   *
+   * Note: this is the fast, unsafe version which does not check for argument sanity
+   *
+   * @protected
+   * @param {Array.<number>} rgb255 - the [0, 255] RGB triplet
+   * @return {string} the hexadecimal color code equivalent
+   */
+  static _rgb255ToHex(rgb255) {
+    return (
+      "#" +
+      ((1 << 24) + (rgb255[0] << 16) + (rgb255[1] << 8) + rgb255[2])
+        .toString(16)
+        .slice(1)
+    );
+  }
+
+  /**
+   * Get the integer equivalent of the [0, 255] RGB triplet.
+   *
+   * Note: this is the fast, unsafe version which does not check for argument sanity
+   *
+   * @protected
+   * @param {Array.<number>} rgb255 - the [0, 255] RGB triplet
+   * @return {number} the integer equivalent
+   */
+  static _rgb255ToInt(rgb255) {
+    return rgb255[0] * 0x10000 + rgb255[1] * 0x100 + rgb255[2];
+  }
+
+  /*
+	get hsv() {
+		if (typeof this._hsv === 'undefined')
+			this._hsv = Color._rgbToHsv(this._rgb);
+		return this._hsv;
+	}
+	get dkl() {
+		if (typeof this._dkl === 'undefined')
+			this._dkl = Color._rgbToDkl(this._rgb);
+		return this._dkl;
+	}
+	get lms() {
+		if (typeof this._lms === 'undefined')
+			this._lms = Color._rgbToLms(this._rgb);
+		return this._lms;
+	}
+	*/
+
+  /**
+   * Get the hexadecimal color code equivalent of the [0, 1] RGB triplet.
+   *
+   * Note: this is the fast, unsafe version which does not check for argument sanity
+   *
+   * @protected
+   * @param {Array.<number>} rgb - the [0, 1] RGB triplet
+   * @return {string} the hexadecimal color code equivalent
+   */
+  static _rgbToHex(rgb) {
+    const rgb255 = [
+      Math.round(rgb[0] * 255),
+      Math.round(rgb[1] * 255),
+      Math.round(rgb[2] * 255),
+    ];
+    return Color._rgb255ToHex(rgb255);
+  }
+
+  /**
+   * Get the integer equivalent of the [0, 1] RGB triplet.
+   *
+   * Note: this is the fast, unsafe version which does not check for argument sanity
+   *
+   * @protected
+   * @param {Array.<number>} rgb - the [0, 1] RGB triplet
+   * @return {number} the integer equivalent
+   */
+  static _rgbToInt(rgb) {
+    const rgb255 = [
+      Math.round(rgb[0] * 255),
+      Math.round(rgb[1] * 255),
+      Math.round(rgb[2] * 255),
+    ];
+    return Color._rgb255ToInt(rgb255);
+  }
+
+  /**
+   * Get the [0,1] RGB triplet equivalent of the hexadecimal color code.
+   *
+   * @param {string} hex - the hexadecimal color code
+   * @return {Array.<number>} the [0,1] RGB triplet equivalent
+   */
+  static hexToRgb(hex) {
+    const [r255, g255, b255] = Color.hexToRgb255(hex);
+    return [r255 / 255.0, g255 / 255.0, b255 / 255.0];
+  }
+
+  /**
+   * Get the [0,255] RGB triplet equivalent of the hexadecimal color code.
+   *
+   * @param {string} hex - the hexadecimal color code
+   * @return {Array.<number>} the [0,255] RGB triplet equivalent
+   */
+  static hexToRgb255(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (result == null) {
+      throw {
+        context:
+          "when converting an hexadecimal color code to its 255- or [0,1]-based RGB color representation",
+        error: "unable to parse the argument: wrong type or wrong code",
+        origin: "Color.hexToRgb255",
+      };
+    }
+
+    return [
+      parseInt(result[1], 16),
+      parseInt(result[2], 16),
+      parseInt(result[3], 16),
+    ];
+  }
+
+  /**
+   * Get the hexadecimal color code equivalent of the [0, 255] RGB triplet.
+   *
+   * @param {Array.<number>} rgb255 - the [0, 255] RGB triplet
+   * @return {string} the hexadecimal color code equivalent
+   */
+  static rgb255ToHex(rgb255) {
+    const response = {
+      context:
+        "when converting an rgb triplet to its hexadecimal color representation",
+      origin: "Color.rgb255ToHex",
+    };
+
+    try {
+      Color._checkTypeAndRange(rgb255, [0, 255]);
+      return Color._rgb255ToHex(rgb255);
+    } catch (error) {
+      throw Object.assign(response, { error });
+    }
+  }
+
+  /**
+   * Get the integer equivalent of the [0, 255] RGB triplet.
+   *
+   * @param {Array.<number>} rgb255 - the [0, 255] RGB triplet
+   * @return {number} the integer equivalent
+   */
+  static rgb255ToInt(rgb255) {
+    const response = {
+      context: "when converting an rgb triplet to its integer representation",
+      origin: "Color.rgb255ToInt",
+    };
+    try {
+      Color._checkTypeAndRange(rgb255, [0, 255]);
+      return Color._rgb255ToInt(rgb255);
+    } catch (error) {
+      throw Object.assign(response, { error });
+    }
+  }
+
+  /**
+   * Get the hexadecimal color code equivalent of the [0, 1] RGB triplet.
+   *
+   * @param {Array.<number>} rgb - the [0, 1] RGB triplet
+   * @return {string} the hexadecimal color code equivalent
+   */
+  static rgbToHex(rgb) {
+    const response = {
+      context:
+        "when converting an rgb triplet to its hexadecimal color representation",
+      origin: "Color.rgbToHex",
+    };
+
+    try {
+      Color._checkTypeAndRange(rgb, [0, 1]);
+      return Color._rgbToHex(rgb);
+    } catch (error) {
+      throw Object.assign(response, { error });
+    }
+  }
+
+  /**
+   * Get the integer equivalent of the [0, 1] RGB triplet.
+   *
+   * @param {Array.<number>} rgb - the [0, 1] RGB triplet
+   * @return {number} the integer equivalent
+   */
+  static rgbToInt(rgb) {
+    const response = {
+      context: "when converting an rgb triplet to its integer representation",
+      origin: "Color.rgbToInt",
+    };
+
+    try {
+      Color._checkTypeAndRange(rgb, [0, 1]);
+      return Color._rgbToInt(rgb);
+    } catch (error) {
+      throw Object.assign(response, { error });
+    }
+  }
+
+  /**
+   * Get the hexadecimal color code equivalent of this Color.
+   *
+   * @return {string} the hexadecimal color code equivalent
+   */
+  get hex() {
+    if (typeof this._hex === "undefined") {
+      this._hex = Color._rgbToHex(this._rgb);
+    }
+    return this._hex;
+  }
+
+  /**
+   * Get the integer code equivalent of this Color.
+   *
+   * @return {number} the integer code equivalent
+   */
+  get int() {
+    if (typeof this._int === "undefined") {
+      this._int = Color._rgbToInt(this._rgb);
+    }
+    return this._int;
+  }
+
+  /**
+   * Get the [0,1] RGB triplet equivalent of this Color.
+   *
+   * @return {Array.<number>} the [0,1] RGB triplet equivalent
+   */
+  get rgb() {
+    return this._rgb;
+  }
+
+  /**
+   * Get the [0,255] RGB triplet equivalent of this Color.
+   *
+   * @return {Array.<number>} the [0,255] RGB triplet equivalent
+   */
+  get rgb255() {
+    return [
+      Math.round(this._rgb[0] * 255.0),
+      Math.round(this._rgb[1] * 255.0),
+      Math.round(this._rgb[2] * 255.0),
+    ];
+  }
+
+  /**
+   * Get the [-1,1] RGB triplet equivalent of this Color.
+   *
+   * @return {Array.<number>} the [-1,1] RGB triplet equivalent
+   */
+  get rgbFull() {
+    return this._rgbFull;
+  }
+
+  /**
+   * String representation of the color, i.e. the hexadecimal representation.
+   *
+   * @return {string} the representation.
+   */
+  toString() {
+    return this.hex;
   }
 }
 
@@ -508,8 +508,8 @@ Color.NAMED_COLORS = {
   darkcyan: "#008B8B",
   darkgoldenrod: "#B8860B",
   darkgray: "#A9A9A9",
-  darkgrey: "#A9A9A9",
   darkgreen: "#006400",
+  darkgrey: "#A9A9A9",
   darkkhaki: "#BDB76B",
   darkmagenta: "#8B008B",
   darkolivegreen: "#556B2F",
@@ -537,9 +537,9 @@ Color.NAMED_COLORS = {
   gold: "#FFD700",
   goldenrod: "#DAA520",
   gray: "#808080",
-  grey: "#808080",
   green: "#008000",
   greenyellow: "#ADFF2F",
+  grey: "#808080",
   honeydew: "#F0FFF0",
   hotpink: "#FF69B4",
   indianred: "#CD5C5C",
@@ -555,8 +555,8 @@ Color.NAMED_COLORS = {
   lightcyan: "#E0FFFF",
   lightgoldenrodyellow: "#FAFAD2",
   lightgray: "#D3D3D3",
-  lightgrey: "#D3D3D3",
   lightgreen: "#90EE90",
+  lightgrey: "#D3D3D3",
   lightpink: "#FFB6C1",
   lightsalmon: "#FFA07A",
   lightseagreen: "#20B2AA",

@@ -35,30 +35,30 @@ export class QuestHandler extends TrialHandler {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    psychoJS,
-    varName,
-    startVal,
-    startValSd,
-    minVal,
-    maxVal,
-    pThreshold,
-    nTrials,
-    stopInterval,
-    method,
+    autoLog,
     beta,
     delta,
     gamma,
     grain,
+    maxVal,
+    method,
+    minVal,
     name,
-    autoLog,
+    nTrials,
+    psychoJS,
+    pThreshold,
+    startVal,
+    startValSd,
+    stopInterval,
+    varName,
   } = {}) {
     super({
-      psychoJS,
-      name,
       autoLog,
       method: TrialHandler.Method.SEQUENTIAL,
-      trialList: Array(nTrials),
+      name,
       nReps: 1,
+      psychoJS,
+      trialList: Array(nTrials),
     });
 
     this._addAttribute("varName", varName);
@@ -81,140 +81,6 @@ export class QuestHandler extends TrialHandler {
   }
 
   /**
-   * Setter for the method attribute.
-   *
-   * @param {mixed} method - the method value, PsychoPy-style values ("mean", "median",
-   * "quantile") are converted to their respective QuestHandler.Method values
-   * @param {boolean} log - whether or not to log the change of seed
-   */
-  setMethod(method, log) {
-    let methodMapping = {
-      quantile: QuestHandler.Method.QUANTILE,
-      mean: QuestHandler.Method.MEAN,
-      mode: QuestHandler.Method.MODE,
-    };
-    // If method is a key in methodMapping, convert method to corresponding value
-    if (methodMapping.hasOwnProperty(method)) {
-      method = methodMapping[method];
-    }
-    this._setAttribute("method", method, log);
-  }
-
-  /**
-   * Add a response and update the PDF.
-   *
-   * @param{number} response	- the response to the trial, must be either 0 (incorrect or
-   * non-detected) or 1 (correct or detected)
-   * @param{number | undefined} value - optional intensity / contrast / threshold
-   * @param{boolean} [doAddData = true] - whether or not to add the response as data to the
-   * 	experiment
-   */
-  addResponse(response, value, doAddData = true) {
-    // check that response is either 0 or 1:
-    if (response !== 0 && response !== 1) {
-      throw {
-        origin: "QuestHandler.addResponse",
-        context: "when adding a trial response",
-        error: `the response must be either 0 or 1, got: ${JSON.stringify(response)}`,
-      };
-    }
-
-    if (doAddData) {
-      this._psychoJS.experiment.addData(this._name + ".response", response);
-    }
-
-    // update the QUEST pdf:
-    if (typeof value !== "undefined") {
-      this._jsQuest = jsQUEST.QuestUpdate(this._jsQuest, value, response);
-    } else {
-      this._jsQuest = jsQUEST.QuestUpdate(
-        this._jsQuest,
-        this._questValue,
-        response,
-      );
-    }
-
-    if (!this._finished) {
-      this.next();
-
-      // estimate the next value of the QUEST variable
-      // (and update the trial list and snapshots):
-      this._estimateQuestValue();
-    }
-  }
-
-  /**
-   * Simulate a response.
-   *
-   * @param{number} trueValue - the true, known value of the threshold / contrast / intensity
-   * @returns{number} the simulated response, 0 or 1
-   */
-  simulate(trueValue) {
-    const response = jsQUEST.QuestSimulate(
-      this._jsQuest,
-      this._questValue,
-      trueValue,
-    );
-
-    // restrict to limits:
-    this._questValue = Math.max(
-      this._minVal,
-      Math.min(this._maxVal, this._questValue),
-    );
-
-    this._psychoJS.logger.debug(`simulated response: ${response}`);
-
-    return response;
-  }
-
-  /**
-   * Get the mean of the Quest posterior PDF.
-   *
-   * @returns {number} the mean
-   */
-  mean() {
-    return jsQUEST.QuestMean(this._jsQuest);
-  }
-
-  /**
-   * Get the standard deviation of the Quest posterior PDF.
-   *
-   * @returns {number} the standard deviation
-   */
-  sd() {
-    return jsQUEST.QuestSd(this._jsQuest);
-  }
-
-  /**
-   * Get the mode of the Quest posterior PDF.
-   *
-   * @returns {number} the mode
-   */
-  mode() {
-    const [mode, pdf] = jsQUEST.QuestMode(this._jsQuest);
-    return mode;
-  }
-
-  /**
-   * Get the standard deviation of the Quest posterior PDF.
-   *
-   * @param{number} quantileOrder the quantile order
-   * @returns {number} the quantile
-   */
-  quantile(quantileOrder) {
-    return jsQUEST.QuestQuantile(this._jsQuest, quantileOrder);
-  }
-
-  /**
-   * Get the current value of the variable / contrast / threshold.
-   *
-   * @returns {number} the current QUEST value for the variable / contrast / threshold
-   */
-  getQuestValue() {
-    return this._questValue;
-  }
-
-  /**
    * Get the current value of the variable / contrast / threshold.
    *
    * This is the getter associated to getQuestValue.
@@ -223,42 +89,6 @@ export class QuestHandler extends TrialHandler {
    */
   get intensity() {
     return this.getQuestValue();
-  }
-
-  /**
-   * Get an estimate of the 5%-95% confidence interval (CI).
-   *
-   * @param{boolean} [getDifference=false] - if true, return the width of the CI instead of the CI
-   * @returns{number[] | number} the 5%-95% CI or the width of the CI
-   */
-  confInterval(getDifference = false) {
-    const CI = [
-      jsQUEST.QuestQuantile(this._jsQuest, 0.05),
-      jsQUEST.QuestQuantile(this._jsQuest, 0.95),
-    ];
-
-    if (getDifference) {
-      return Math.abs(CI[0] - CI[1]);
-    } else {
-      return CI;
-    }
-  }
-
-  /**
-   * Setup the JS Quest object.
-   *
-   * @protected
-   */
-  _setupJsQuest() {
-    this._jsQuest = jsQUEST.QuestCreate(
-      this._startVal,
-      this._startValSd,
-      this._pThreshold,
-      this._beta,
-      this._delta,
-      this._gamma,
-      this._grain,
-    );
   }
 
   /**
@@ -278,9 +108,9 @@ export class QuestHandler extends TrialHandler {
       this._questValue = mode;
     } else {
       throw {
-        origin: "QuestHandler._estimateQuestValue",
         context: "when estimating the next value of the QUEST variable",
         error: `unknown method: ${this._method}, please use: mean, mode, or quantile`,
+        origin: "QuestHandler._estimateQuestValue",
       };
     }
 
@@ -320,6 +150,176 @@ export class QuestHandler extends TrialHandler {
       }
     }
   }
+
+  /**
+   * Setup the JS Quest object.
+   *
+   * @protected
+   */
+  _setupJsQuest() {
+    this._jsQuest = jsQUEST.QuestCreate(
+      this._startVal,
+      this._startValSd,
+      this._pThreshold,
+      this._beta,
+      this._delta,
+      this._gamma,
+      this._grain,
+    );
+  }
+
+  /**
+   * Add a response and update the PDF.
+   *
+   * @param{number} response	- the response to the trial, must be either 0 (incorrect or
+   * non-detected) or 1 (correct or detected)
+   * @param{number | undefined} value - optional intensity / contrast / threshold
+   * @param{boolean} [doAddData = true] - whether or not to add the response as data to the
+   * 	experiment
+   */
+  addResponse(response, value, doAddData = true) {
+    // check that response is either 0 or 1:
+    if (response !== 0 && response !== 1) {
+      throw {
+        context: "when adding a trial response",
+        error: `the response must be either 0 or 1, got: ${JSON.stringify(response)}`,
+        origin: "QuestHandler.addResponse",
+      };
+    }
+
+    if (doAddData) {
+      this._psychoJS.experiment.addData(this._name + ".response", response);
+    }
+
+    // update the QUEST pdf:
+    if (typeof value !== "undefined") {
+      this._jsQuest = jsQUEST.QuestUpdate(this._jsQuest, value, response);
+    } else {
+      this._jsQuest = jsQUEST.QuestUpdate(
+        this._jsQuest,
+        this._questValue,
+        response,
+      );
+    }
+
+    if (!this._finished) {
+      this.next();
+
+      // estimate the next value of the QUEST variable
+      // (and update the trial list and snapshots):
+      this._estimateQuestValue();
+    }
+  }
+
+  /**
+   * Get an estimate of the 5%-95% confidence interval (CI).
+   *
+   * @param{boolean} [getDifference=false] - if true, return the width of the CI instead of the CI
+   * @returns{number[] | number} the 5%-95% CI or the width of the CI
+   */
+  confInterval(getDifference = false) {
+    const CI = [
+      jsQUEST.QuestQuantile(this._jsQuest, 0.05),
+      jsQUEST.QuestQuantile(this._jsQuest, 0.95),
+    ];
+
+    if (getDifference) {
+      return Math.abs(CI[0] - CI[1]);
+    } else {
+      return CI;
+    }
+  }
+
+  /**
+   * Get the current value of the variable / contrast / threshold.
+   *
+   * @returns {number} the current QUEST value for the variable / contrast / threshold
+   */
+  getQuestValue() {
+    return this._questValue;
+  }
+
+  /**
+   * Get the mean of the Quest posterior PDF.
+   *
+   * @returns {number} the mean
+   */
+  mean() {
+    return jsQUEST.QuestMean(this._jsQuest);
+  }
+
+  /**
+   * Get the mode of the Quest posterior PDF.
+   *
+   * @returns {number} the mode
+   */
+  mode() {
+    const [mode, pdf] = jsQUEST.QuestMode(this._jsQuest);
+    return mode;
+  }
+
+  /**
+   * Get the standard deviation of the Quest posterior PDF.
+   *
+   * @param{number} quantileOrder the quantile order
+   * @returns {number} the quantile
+   */
+  quantile(quantileOrder) {
+    return jsQUEST.QuestQuantile(this._jsQuest, quantileOrder);
+  }
+
+  /**
+   * Get the standard deviation of the Quest posterior PDF.
+   *
+   * @returns {number} the standard deviation
+   */
+  sd() {
+    return jsQUEST.QuestSd(this._jsQuest);
+  }
+
+  /**
+   * Setter for the method attribute.
+   *
+   * @param {mixed} method - the method value, PsychoPy-style values ("mean", "median",
+   * "quantile") are converted to their respective QuestHandler.Method values
+   * @param {boolean} log - whether or not to log the change of seed
+   */
+  setMethod(method, log) {
+    let methodMapping = {
+      mean: QuestHandler.Method.MEAN,
+      mode: QuestHandler.Method.MODE,
+      quantile: QuestHandler.Method.QUANTILE,
+    };
+    // If method is a key in methodMapping, convert method to corresponding value
+    if (methodMapping.hasOwnProperty(method)) {
+      method = methodMapping[method];
+    }
+    this._setAttribute("method", method, log);
+  }
+
+  /**
+   * Simulate a response.
+   *
+   * @param{number} trueValue - the true, known value of the threshold / contrast / intensity
+   * @returns{number} the simulated response, 0 or 1
+   */
+  simulate(trueValue) {
+    const response = jsQUEST.QuestSimulate(
+      this._jsQuest,
+      this._questValue,
+      trueValue,
+    );
+
+    // restrict to limits:
+    this._questValue = Math.max(
+      this._minVal,
+      Math.min(this._maxVal, this._questValue),
+    );
+
+    this._psychoJS.logger.debug(`simulated response: ${response}`);
+
+    return response;
+  }
 }
 
 /**
@@ -330,11 +330,6 @@ export class QuestHandler extends TrialHandler {
  */
 QuestHandler.Method = {
   /**
-   * Quantile threshold estimate.
-   */
-  QUANTILE: Symbol.for("QUANTILE"),
-
-  /**
    * Mean threshold estimate.
    */
   MEAN: Symbol.for("MEAN"),
@@ -343,4 +338,9 @@ QuestHandler.Method = {
    * Mode threshold estimate.
    */
   MODE: Symbol.for("MODE"),
+
+  /**
+   * Quantile threshold estimate.
+   */
+  QUANTILE: Symbol.for("QUANTILE"),
 };

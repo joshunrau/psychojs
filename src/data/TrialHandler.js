@@ -10,6 +10,7 @@
 
 import seedrandom from "seedrandom";
 import * as XLSX from "xlsx";
+
 import { PsychObject } from "../util/PsychObject.js";
 import * as util from "../util/Util.js";
 
@@ -19,20 +20,6 @@ import * as util from "../util/Util.js";
  * @extends PsychObject
  */
 export class TrialHandler extends PsychObject {
-  /**
-   * Getter for experimentHandler.
-   */
-  get experimentHandler() {
-    return this._experimentHandler;
-  }
-
-  /**
-   * Setter for experimentHandler.
-   */
-  set experimentHandler(exp) {
-    this._experimentHandler = exp;
-  }
-
   /**
    * @param {Object} options - the handler options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
@@ -46,14 +33,14 @@ export class TrialHandler extends PsychObject {
    * @todo extraInfo is not taken into account, we use the expInfo of the ExperimentHandler instead
    */
   constructor({
-    psychoJS,
-    trialList = [undefined],
-    nReps,
-    method = TrialHandler.Method.RANDOM,
-    extraInfo = [],
-    seed,
-    name,
     autoLog = true,
+    extraInfo = [],
+    method = TrialHandler.Method.RANDOM,
+    name,
+    nReps,
+    psychoJS,
+    seed,
+    trialList = [undefined],
   } = {}) {
     super(psychoJS);
 
@@ -102,176 +89,6 @@ export class TrialHandler extends PsychObject {
   }
 
   /**
-   * Helps go through each trial in the sequence one by one, mirrors PsychoPy.
-   */
-  next() {
-    const trialIterator = this[Symbol.iterator]();
-    const { value } = trialIterator.next();
-
-    return value;
-  }
-
-  /**
-   * Iterator over the trial sequence.
-   *
-   * This makes it possible to iterate over all trials.
-   * @example
-   * let handler = new TrialHandler({nReps: 5});
-   * for (const thisTrial of handler) { console.log(thisTrial); }
-   */
-  [Symbol.iterator]() {
-    return {
-      next: () => {
-        this.thisTrialN++;
-        this.thisN++;
-        this.nRemaining--;
-
-        // check for the last trial:
-        if (this.nRemaining === 0) {
-          // this only indicated that the scheduling is done, not that the loop is finished
-          // this.finished = true;
-        }
-
-        // start a new repetition:
-        if (this.thisTrialN === this.nStim) {
-          this.thisTrialN = 0;
-          this.thisRepN++;
-        }
-
-        // check if we have completed the sequence:
-        if (this.thisRepN >= this.nReps) {
-          this.thisTrial = null;
-          return { done: true };
-        }
-
-        this.thisIndex = this._trialSequence[this.thisRepN][this.thisTrialN];
-        this.thisTrial = this.trialList[this.thisIndex];
-        this.ran = 1;
-        this.order = this.thisN;
-        /*
-				if self.autoLog:
-					msg = 'New trial (rep=%i, index=%i): %s'
-					vals = (self.thisRepN, self.thisTrialN, self.thisTrial)
-					logging.exp(msg % vals, obj=self.thisTrial)*/
-
-        return { value: this.thisTrial, done: false };
-      },
-    };
-  }
-
-  /**
-   * Execute the callback for each trial in the sequence.
-   *
-   * @param callback
-   */
-  forEach(callback) {
-    const trialIterator = this[Symbol.iterator]();
-
-    while (true) {
-      const result = trialIterator.next();
-      if (result.done) {
-        break;
-      }
-
-      callback(result.value);
-    }
-  }
-
-  /**
-   * @typedef {Object} Snapshot
-   * @property {TrialHandler} handler - the trialHandler
-   * @property {string} name - the trialHandler name
-   * @property {number} nStim - the number of stimuli
-   * @property {number} nTotal - the total number of trials that will be run
-   * @property {number} nRemaining - the total number of trial remaining
-   * @property {number} thisRepN - the current repeat
-   * @property {number} thisTrialN - the current trial number within the current repeat
-   * @property {number} thisN - the total number of trials completed so far
-   * @property {number} thisIndex - the index of the current trial in the conditions list
-   * @property {number} ran - whether or not the trial ran
-   * @property {number} finished - whether or not the trials finished
-   * @property {Object} trialAttributes - a list of trial attributes
-   */
-  /**
-   * Get a snapshot of the current internal state of the trial handler (e.g. current trial number,
-   * number of trial remaining).
-   *
-   * This is typically used in the LoopBegin function, in order to capture the current state of a TrialHandler
-   *
-   * @return {Snapshot} - a snapshot of the current internal state.
-   */
-  getSnapshot() {
-    const currentIndex = this.thisIndex;
-
-    const snapshot = {
-      handler: this,
-      name: this.name,
-      nStim: this.nStim,
-      nTotal: this.nTotal,
-      nRemaining: this.nRemaining,
-      thisRepN: this.thisRepN,
-      thisTrialN: this.thisTrialN,
-      thisN: this.thisN,
-      thisIndex: this.thisIndex,
-      ran: this.ran,
-      finished: this._finished,
-
-      getCurrentTrial: () => this.getTrial(currentIndex),
-      getTrial: (index = 0) => this.getTrial(index),
-
-      addData: (key, value) => this.addData(key, value),
-    };
-
-    // add to the snapshots the current trial's attributes:
-    const currentTrial = this.getCurrentTrial();
-    const excludedAttributes = [
-      "handler",
-      "name",
-      "nStim",
-      "nRemaining",
-      "thisRepN",
-      "thisTrialN",
-      "thisN",
-      "thisIndex",
-      "ran",
-      "finished",
-    ];
-    const trialAttributes = [];
-    for (const attribute in currentTrial) {
-      if (!(attribute in excludedAttributes)) {
-        snapshot[attribute] = currentTrial[attribute];
-        trialAttributes.push(attribute);
-      } else {
-        this._psychoJS.logger.warn(
-          `attempt to replace the value of protected TrialHandler variable: ${attribute}`,
-        );
-      }
-    }
-    snapshot.trialAttributes = trialAttributes;
-
-    // add the snapshot to the list:
-    this._snapshots.push(snapshot);
-
-    return snapshot;
-  }
-
-  /**
-   * Setter for the seed attribute.
-   *
-   * @param {boolean} seed - the seed value
-   * @param {boolean} log - whether or not to log the change of seed
-   */
-  setSeed(seed, log) {
-    this._setAttribute("seed", seed, log);
-
-    if (typeof seed !== "undefined") {
-      this._randomNumberGenerator = seedrandom(seed);
-    } else {
-      this._randomNumberGenerator = seedrandom();
-    }
-  }
-
-  /**
    * Set the internal state of the snapshot's trial handler from the snapshot.
    *
    * @param {Snapshot} snapshot - the snapshot from which to update the current internal state of the
@@ -307,128 +124,6 @@ export class TrialHandler extends PsychObject {
       value[attribute] = snapshot[attribute];
     }
     window[name] = value;
-  }
-
-  /**
-   * Getter for the finished attribute.
-   *
-   * @returns {boolean} whether or not the trial has finished.
-   */
-  get finished() {
-    return this._finished;
-  }
-
-  /**
-   * Setter for the finished attribute.
-   *
-   * @param {boolean} isFinished - whether or not the loop is finished.
-   */
-  set finished(isFinished) {
-    this._finished = isFinished;
-
-    this._snapshots.forEach((snapshot) => {
-      snapshot.finished = isFinished;
-    });
-  }
-
-  /**
-   * Get the trial index.
-   *
-   * @return {number} the current trial index
-   */
-  getTrialIndex() {
-    return this.thisIndex;
-  }
-
-  /**
-   * Set the trial index.
-   *
-   * @param {number} index - the new trial index
-   */
-  setTrialIndex(index) {
-    this.thisIndex = index;
-  }
-
-  /**
-   * Get the attributes of the trials.
-   *
-   * <p>Note: we assume that all trials in the trialList share the same attributes
-   * and consequently consider only the attributes of the first trial.</p>
-   *
-   * @return {Array.string} the attributes
-   */
-  getAttributes() {
-    if (!Array.isArray(this.trialList) || this.nStim === 0) {
-      return [];
-    }
-
-    const firstTrial = this.trialList[0];
-    if (!firstTrial) {
-      return [];
-    }
-
-    return Object.keys(this.trialList[0]);
-  }
-
-  /**
-   * Get the current trial.
-   *
-   * @return {Object} the current trial
-   */
-  getCurrentTrial() {
-    return this.trialList[this.thisIndex];
-  }
-
-  /**
-   * Get the nth trial.
-   *
-   * @param {number} index - the trial index
-   * @return {Object|undefined} the requested trial or undefined if attempting to go beyond the last trial.
-   */
-  getTrial(index = 0) {
-    if (index < 0 || index > this.nTotal) {
-      return undefined;
-    }
-
-    return this.trialList[index];
-  }
-
-  /**
-   * Get the nth future or past trial, without advancing through the trial list.
-   *
-   * @param {number} [n = 1] - increment
-   * @return {Object|undefined} the future trial (if n is positive) or past trial (if n is negative)
-   * or undefined if attempting to go beyond the last trial.
-   */
-  getFutureTrial(n = 1) {
-    if (this.thisIndex + n < 0 || n > this.nRemaining) {
-      return undefined;
-    }
-
-    return this.trialList[this.thisIndex + n];
-  }
-
-  /**
-   * Get the nth previous trial.
-   *  Note: this is useful for comparisons in n-back tasks.
-   *
-   * @param {number} [n = -1] - increment
-   * @return {Object|undefined} the past trial or undefined if attempting to go prior to the first trial.
-   */
-  getEarlierTrial(n = -1) {
-    return getFutureTrial(-abs(n));
-  }
-
-  /**
-   * Add a key/value pair to data about the current trial held by the experiment handler
-   *
-   * @param {Object} key - the key
-   * @param {Object} value - the value
-   */
-  addData(key, value) {
-    if (this._experimentHandler) {
-      this._experimentHandler.addData(key, value);
-    }
   }
 
   /**
@@ -491,8 +186,8 @@ export class TrialHandler extends PsychObject {
 
         // worksheet to array of arrays (the first array contains the fields):
         const sheet = XLSX.utils.sheet_to_json(worksheet, {
-          header: 1,
           blankrows: false,
+          header: 1,
         });
         const fields = sheet.shift();
 
@@ -550,48 +245,47 @@ export class TrialHandler extends PsychObject {
       }
     } catch (error) {
       throw {
-        origin: "TrialHandler.importConditions",
         context: `when importing condition: ${resourceName}`,
         error,
+        origin: "TrialHandler.importConditions",
       };
     }
   }
 
   /**
-   * Prepare the trial list.
-   *
-   * @protected
-   * @returns {void}
+   * Getter for experimentHandler.
    */
-  _prepareTrialList() {
-    const response = {
-      origin: "TrialHandler._prepareTrialList",
-      context: "when preparing the trial list",
-    };
+  get experimentHandler() {
+    return this._experimentHandler;
+  }
 
-    // we treat undefined trialList as a list with a single empty entry:
-    if (typeof this._trialList === "undefined") {
-      this.trialList = [undefined];
-    }
-    // if trialList is an array, we make sure it is not empty:
-    else if (Array.isArray(this._trialList)) {
-      if (this._trialList.length === 0) {
-        this.trialList = [undefined];
-      }
-    }
-    // if trialList is a string, we treat it as the name of the condition resource:
-    else if (typeof this._trialList === "string") {
-      this.trialList = TrialHandler.importConditions(
-        this.psychoJS.serverManager,
-        this._trialList,
-      );
-    }
-    // unknown type:
-    else {
-      throw Object.assign(response, {
-        error: `unable to prepare trial list: unknown type: ${typeof this._trialList}`,
-      });
-    }
+  /**
+   * Setter for experimentHandler.
+   */
+  set experimentHandler(exp) {
+    this._experimentHandler = exp;
+  }
+
+  /**
+   * Getter for the finished attribute.
+   *
+   * @returns {boolean} whether or not the trial has finished.
+   */
+  get finished() {
+    return this._finished;
+  }
+
+  /**
+   * Setter for the finished attribute.
+   *
+   * @param {boolean} isFinished - whether or not the loop is finished.
+   */
+  set finished(isFinished) {
+    this._finished = isFinished;
+
+    this._snapshots.forEach((snapshot) => {
+      snapshot.finished = isFinished;
+    });
   }
 
   /**
@@ -622,8 +316,8 @@ export class TrialHandler extends PsychObject {
    **/
   _prepareSequence() {
     const response = {
-      origin: "TrialHandler._prepareSequence",
       context: "when preparing a sequence of trials",
+      origin: "TrialHandler._prepareSequence",
     };
 
     // get an array of the indices of the elements of trialList:
@@ -663,6 +357,313 @@ export class TrialHandler extends PsychObject {
 
     return this._trialSequence;
   }
+
+  /**
+   * Prepare the trial list.
+   *
+   * @protected
+   * @returns {void}
+   */
+  _prepareTrialList() {
+    const response = {
+      context: "when preparing the trial list",
+      origin: "TrialHandler._prepareTrialList",
+    };
+
+    // we treat undefined trialList as a list with a single empty entry:
+    if (typeof this._trialList === "undefined") {
+      this.trialList = [undefined];
+    }
+    // if trialList is an array, we make sure it is not empty:
+    else if (Array.isArray(this._trialList)) {
+      if (this._trialList.length === 0) {
+        this.trialList = [undefined];
+      }
+    }
+    // if trialList is a string, we treat it as the name of the condition resource:
+    else if (typeof this._trialList === "string") {
+      this.trialList = TrialHandler.importConditions(
+        this.psychoJS.serverManager,
+        this._trialList,
+      );
+    }
+    // unknown type:
+    else {
+      throw Object.assign(response, {
+        error: `unable to prepare trial list: unknown type: ${typeof this._trialList}`,
+      });
+    }
+  }
+
+  /**
+   * Add a key/value pair to data about the current trial held by the experiment handler
+   *
+   * @param {Object} key - the key
+   * @param {Object} value - the value
+   */
+  addData(key, value) {
+    if (this._experimentHandler) {
+      this._experimentHandler.addData(key, value);
+    }
+  }
+
+  /**
+   * Execute the callback for each trial in the sequence.
+   *
+   * @param callback
+   */
+  forEach(callback) {
+    const trialIterator = this[Symbol.iterator]();
+
+    while (true) {
+      const result = trialIterator.next();
+      if (result.done) {
+        break;
+      }
+
+      callback(result.value);
+    }
+  }
+
+  /**
+   * Get the attributes of the trials.
+   *
+   * <p>Note: we assume that all trials in the trialList share the same attributes
+   * and consequently consider only the attributes of the first trial.</p>
+   *
+   * @return {Array.string} the attributes
+   */
+  getAttributes() {
+    if (!Array.isArray(this.trialList) || this.nStim === 0) {
+      return [];
+    }
+
+    const firstTrial = this.trialList[0];
+    if (!firstTrial) {
+      return [];
+    }
+
+    return Object.keys(this.trialList[0]);
+  }
+
+  /**
+   * Get the current trial.
+   *
+   * @return {Object} the current trial
+   */
+  getCurrentTrial() {
+    return this.trialList[this.thisIndex];
+  }
+
+  /**
+   * Get the nth previous trial.
+   *  Note: this is useful for comparisons in n-back tasks.
+   *
+   * @param {number} [n = -1] - increment
+   * @return {Object|undefined} the past trial or undefined if attempting to go prior to the first trial.
+   */
+  getEarlierTrial(n = -1) {
+    return getFutureTrial(-abs(n));
+  }
+
+  /**
+   * Get the nth future or past trial, without advancing through the trial list.
+   *
+   * @param {number} [n = 1] - increment
+   * @return {Object|undefined} the future trial (if n is positive) or past trial (if n is negative)
+   * or undefined if attempting to go beyond the last trial.
+   */
+  getFutureTrial(n = 1) {
+    if (this.thisIndex + n < 0 || n > this.nRemaining) {
+      return undefined;
+    }
+
+    return this.trialList[this.thisIndex + n];
+  }
+
+  /**
+   * @typedef {Object} Snapshot
+   * @property {TrialHandler} handler - the trialHandler
+   * @property {string} name - the trialHandler name
+   * @property {number} nStim - the number of stimuli
+   * @property {number} nTotal - the total number of trials that will be run
+   * @property {number} nRemaining - the total number of trial remaining
+   * @property {number} thisRepN - the current repeat
+   * @property {number} thisTrialN - the current trial number within the current repeat
+   * @property {number} thisN - the total number of trials completed so far
+   * @property {number} thisIndex - the index of the current trial in the conditions list
+   * @property {number} ran - whether or not the trial ran
+   * @property {number} finished - whether or not the trials finished
+   * @property {Object} trialAttributes - a list of trial attributes
+   */
+  /**
+   * Get a snapshot of the current internal state of the trial handler (e.g. current trial number,
+   * number of trial remaining).
+   *
+   * This is typically used in the LoopBegin function, in order to capture the current state of a TrialHandler
+   *
+   * @return {Snapshot} - a snapshot of the current internal state.
+   */
+  getSnapshot() {
+    const currentIndex = this.thisIndex;
+
+    const snapshot = {
+      addData: (key, value) => this.addData(key, value),
+      finished: this._finished,
+      getCurrentTrial: () => this.getTrial(currentIndex),
+      getTrial: (index = 0) => this.getTrial(index),
+      handler: this,
+      name: this.name,
+      nRemaining: this.nRemaining,
+      nStim: this.nStim,
+      nTotal: this.nTotal,
+      ran: this.ran,
+      thisIndex: this.thisIndex,
+
+      thisN: this.thisN,
+      thisRepN: this.thisRepN,
+
+      thisTrialN: this.thisTrialN,
+    };
+
+    // add to the snapshots the current trial's attributes:
+    const currentTrial = this.getCurrentTrial();
+    const excludedAttributes = [
+      "handler",
+      "name",
+      "nStim",
+      "nRemaining",
+      "thisRepN",
+      "thisTrialN",
+      "thisN",
+      "thisIndex",
+      "ran",
+      "finished",
+    ];
+    const trialAttributes = [];
+    for (const attribute in currentTrial) {
+      if (!(attribute in excludedAttributes)) {
+        snapshot[attribute] = currentTrial[attribute];
+        trialAttributes.push(attribute);
+      } else {
+        this._psychoJS.logger.warn(
+          `attempt to replace the value of protected TrialHandler variable: ${attribute}`,
+        );
+      }
+    }
+    snapshot.trialAttributes = trialAttributes;
+
+    // add the snapshot to the list:
+    this._snapshots.push(snapshot);
+
+    return snapshot;
+  }
+
+  /**
+   * Get the nth trial.
+   *
+   * @param {number} index - the trial index
+   * @return {Object|undefined} the requested trial or undefined if attempting to go beyond the last trial.
+   */
+  getTrial(index = 0) {
+    if (index < 0 || index > this.nTotal) {
+      return undefined;
+    }
+
+    return this.trialList[index];
+  }
+
+  /**
+   * Get the trial index.
+   *
+   * @return {number} the current trial index
+   */
+  getTrialIndex() {
+    return this.thisIndex;
+  }
+
+  /**
+   * Helps go through each trial in the sequence one by one, mirrors PsychoPy.
+   */
+  next() {
+    const trialIterator = this[Symbol.iterator]();
+    const { value } = trialIterator.next();
+
+    return value;
+  }
+
+  /**
+   * Setter for the seed attribute.
+   *
+   * @param {boolean} seed - the seed value
+   * @param {boolean} log - whether or not to log the change of seed
+   */
+  setSeed(seed, log) {
+    this._setAttribute("seed", seed, log);
+
+    if (typeof seed !== "undefined") {
+      this._randomNumberGenerator = seedrandom(seed);
+    } else {
+      this._randomNumberGenerator = seedrandom();
+    }
+  }
+
+  /**
+   * Set the trial index.
+   *
+   * @param {number} index - the new trial index
+   */
+  setTrialIndex(index) {
+    this.thisIndex = index;
+  }
+
+  /**
+   * Iterator over the trial sequence.
+   *
+   * This makes it possible to iterate over all trials.
+   * @example
+   * let handler = new TrialHandler({nReps: 5});
+   * for (const thisTrial of handler) { console.log(thisTrial); }
+   */
+  [Symbol.iterator]() {
+    return {
+      next: () => {
+        this.thisTrialN++;
+        this.thisN++;
+        this.nRemaining--;
+
+        // check for the last trial:
+        if (this.nRemaining === 0) {
+          // this only indicated that the scheduling is done, not that the loop is finished
+          // this.finished = true;
+        }
+
+        // start a new repetition:
+        if (this.thisTrialN === this.nStim) {
+          this.thisTrialN = 0;
+          this.thisRepN++;
+        }
+
+        // check if we have completed the sequence:
+        if (this.thisRepN >= this.nReps) {
+          this.thisTrial = null;
+          return { done: true };
+        }
+
+        this.thisIndex = this._trialSequence[this.thisRepN][this.thisTrialN];
+        this.thisTrial = this.trialList[this.thisIndex];
+        this.ran = 1;
+        this.order = this.thisN;
+        /*
+				if self.autoLog:
+					msg = 'New trial (rep=%i, index=%i): %s'
+					vals = (self.thisRepN, self.thisTrialN, self.thisTrial)
+					logging.exp(msg % vals, obj=self.thisTrial)*/
+
+        return { done: false, value: this.thisTrial };
+      },
+    };
+  }
 }
 
 /**
@@ -673,16 +674,6 @@ export class TrialHandler extends PsychObject {
  */
 TrialHandler.Method = {
   /**
-   * Conditions are presented in the order they are given.
-   */
-  SEQUENTIAL: Symbol.for("SEQUENTIAL"),
-
-  /**
-   * Conditions are shuffled within each repeat.
-   */
-  RANDOM: Symbol.for("RANDOM"),
-
-  /**
    * Conditions are fully randomised across all repeats.
    */
   FULL_RANDOM: Symbol.for("FULL_RANDOM"),
@@ -691,4 +682,14 @@ TrialHandler.Method = {
    * Same as above, but named to reflect PsychoPy boileplate.
    */
   FULLRANDOM: Symbol.for("FULL_RANDOM"),
+
+  /**
+   * Conditions are shuffled within each repeat.
+   */
+  RANDOM: Symbol.for("RANDOM"),
+
+  /**
+   * Conditions are presented in the order they are given.
+   */
+  SEQUENTIAL: Symbol.for("SEQUENTIAL"),
 };

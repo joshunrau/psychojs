@@ -7,6 +7,7 @@
  */
 
 import * as PIXI from "pixi.js-legacy";
+
 import { TrialHandler } from "../data/TrialHandler.js";
 import { Color } from "../util/Color.js";
 import { ColorMixin } from "../util/ColorMixin.js";
@@ -53,43 +54,43 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    name,
-    win,
-    pos,
-    size,
-    units,
-    borderColor,
-    fillColor,
-    itemColor,
-    markerColor,
-    responseColor,
-    color,
-    contrast,
-    opacity,
-    depth,
-    items,
-    randomize,
-    itemPadding,
-    font,
-    fontFamily,
-    bold,
-    italic,
-    fontSize,
-    clipMask,
     autoDraw,
     autoLog,
+    bold,
+    borderColor,
+    clipMask,
+    color,
+    contrast,
+    depth,
+    fillColor,
+    font,
+    fontFamily,
+    fontSize,
+    italic,
+    itemColor,
+    itemPadding,
+    items,
+    markerColor,
+    name,
+    opacity,
+    pos,
+    randomize,
+    responseColor,
+    size,
+    units,
+    win,
   } = {}) {
     super({
-      name,
-      win,
-      units,
-      opacity,
-      depth,
-      pos,
-      size,
-      clipMask,
       autoDraw,
       autoLog,
+      clipMask,
+      depth,
+      name,
+      opacity,
+      pos,
+      size,
+      units,
+      win,
     });
 
     this._addAttribute(
@@ -194,226 +195,19 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
   }
 
   /**
-   * Force a refresh of the stimulus.
-   */
-  refresh() {
-    super.refresh();
-
-    for (let i = 0; i < this._items.length; ++i) {
-      const textStim = this._visual.textStims[i];
-      textStim.refresh();
-
-      const responseStim = this._visual.responseStims[i];
-      if (responseStim) {
-        responseStim.refresh();
-      }
-    }
-  }
-
-  /**
-   * Overridden draw that also calls the draw method of all form elements.
+   * Estimate the bounding box.
    *
    * @override
-   */
-  draw() {
-    // if the scrollbar's marker position has changed then the layout must be updated:
-    if (this._scrollbar.markerPos !== this._prevScrollbarMarkerPos) {
-      this._prevScrollbarMarkerPos = this._scrollbar.markerPos;
-      this._needUpdate = true;
-    }
-
-    // draw the decorations:
-    super.draw();
-
-    // draw the stimuli:
-    for (let i = 0; i < this._items.length; ++i) {
-      if (this._visual.visibles[i]) {
-        const textStim = this._visual.textStims[i];
-        textStim.draw();
-
-        const responseStim = this._visual.responseStims[i];
-        if (responseStim) {
-          responseStim.draw();
-        }
-      }
-    }
-
-    // draw the scrollbar:
-    this._scrollbar.draw();
-  }
-
-  /**
-   * Overridden hide that also calls the hide method of all form elements.
-   *
-   * @override
-   */
-  hide() {
-    // hide the decorations:
-    super.hide();
-
-    // hide the stimuli:
-    if (typeof this._items !== "undefined") {
-      for (let i = 0; i < this._items.length; ++i) {
-        if (this._visual.visibles[i]) {
-          const textStim = this._visual.textStims[i];
-          textStim.hide();
-
-          const responseStim = this._visual.responseStims[i];
-          if (responseStim) {
-            responseStim.hide();
-          }
-        }
-      }
-
-      // hide the scrollbar:
-      this._scrollbar.hide();
-    }
-  }
-
-  /**
-   * Reset the form.
-   */
-  reset() {
-    this.psychoJS.logger.debug("reset Form: ", this._name);
-
-    // reset the stimuli:
-    for (let i = 0; i < this._items.length; ++i) {
-      const textStim = this._visual.textStims[i];
-      textStim.reset();
-
-      const responseStim = this._visual.responseStims[i];
-      if (responseStim) {
-        responseStim.reset();
-      }
-    }
-
-    this._needUpdate = true;
-  }
-
-  /**
-   * Collate the questions and responses into a single dataset.
-   *
-   * @return {object} - the dataset with all questions and responses.
-   */
-  getData() {
-    let nbIncompleteResponse = 0;
-
-    for (let i = 0; i < this._items.length; ++i) {
-      const item = this._items[i];
-      const responseStim = this._visual.responseStims[i];
-      if (responseStim) {
-        if (
-          item.type === Form.Types.CHOICE ||
-          item.type === Form.Types.RATING ||
-          item.type === Form.Types.SLIDER
-        ) {
-          item.response = responseStim.getRating();
-          item.rt = responseStim.getRT();
-
-          if (typeof item.response === "undefined") {
-            ++nbIncompleteResponse;
-          }
-        } else if (item.type === Form.Types.FREE_TEXT) {
-          item.response = responseStim.text;
-          item.rt = undefined;
-
-          if (item.response.length === 0) {
-            ++nbIncompleteResponse;
-          }
-        }
-      }
-    }
-
-    this._items._complete = nbIncompleteResponse === 0;
-
-    // return a copy of this._items:
-    return this._items.map((item) => Object.assign({}, item));
-  }
-  /**
-   * Check if the form is complete.
-   *
-   * @return {boolean} - whether there are any remaining incomplete responses.
-   */
-  formComplete() {
-    // same as complete but might be used by some experiments before 2020.2
-    this.getData();
-    return this._items._complete;
-  }
-  /**
-   * Add the form data to the given experiment.
-   *
-   * @param {module:data.ExperimentHandler} experiment - the experiment into which to insert the form data
-   * @param {string} [format= 'rows'] - whether to insert the data as rows or as columns
-   */
-  addDataToExp(experiment, format = "rows") {
-    const addAsColumns = ["cols", "columns"].includes(format.toLowerCase());
-    const data = this.getData();
-
-    const _doNotSave = [
-      "itemCtrl",
-      "responseCtrl",
-      "itemColor",
-      "options",
-      "ticks",
-      "tickLabels",
-      "responseWidth",
-      "responseColor",
-      "layout",
-    ];
-
-    for (const item of this.getData()) {
-      let index = 0;
-      for (const field in item) {
-        if (!_doNotSave.includes(field)) {
-          const columnName = addAsColumns
-            ? `${this._name}[${index}]${field}`
-            : `${this._name}${field}`;
-          experiment.addData(columnName, item[field]);
-        }
-        ++index;
-      }
-
-      if (!addAsColumns) {
-        experiment.nextEntry();
-      }
-    }
-
-    if (addAsColumns) {
-      experiment.nextEntry();
-    }
-  }
-
-  /**
-   * Import and process the form items from either a spreadsheet resource files (.csv, .xlsx, etc.) or from an array.
-   *
    * @protected
    */
-  _processItems() {
-    const response = {
-      origin: "Form._processItems",
-      context: "when processing the form items",
-    };
-
-    try {
-      if (this._autoLog) {
-        // note: we use the same log message as PsychoPy even though we called this method differently
-        this._psychoJS.experimentLogger.exp("Importing items...");
-      }
-
-      // import the items:
-      this._importItems();
-
-      // sanitize the items (check that keys are valid, fill in default values):
-      this._sanitizeItems();
-
-      // randomise the items if need be:
-      if (this._randomize) {
-        util.shuffle(this._items);
-      }
-    } catch (error) {
-      // throw { ...response, error };
-      throw Object.assign(response, { error });
-    }
+  _estimateBoundingBox() {
+    // take the alignment into account:
+    this._boundingBox = new PIXI.Rectangle(
+      this._pos[0] - this._size[0] / 2.0,
+      this._pos[1] - this._size[1] / 2.0,
+      this._size[0],
+      this._size[1],
+    );
   }
 
   /**
@@ -423,8 +217,8 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
    */
   _importItems() {
     const response = {
-      origin: "Form._importItems",
       context: "when importing the form items",
+      origin: "Form._importItems",
     };
 
     try {
@@ -457,14 +251,47 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
   }
 
   /**
+   * Import and process the form items from either a spreadsheet resource files (.csv, .xlsx, etc.) or from an array.
+   *
+   * @protected
+   */
+  _processItems() {
+    const response = {
+      context: "when processing the form items",
+      origin: "Form._processItems",
+    };
+
+    try {
+      if (this._autoLog) {
+        // note: we use the same log message as PsychoPy even though we called this method differently
+        this._psychoJS.experimentLogger.exp("Importing items...");
+      }
+
+      // import the items:
+      this._importItems();
+
+      // sanitize the items (check that keys are valid, fill in default values):
+      this._sanitizeItems();
+
+      // randomise the items if need be:
+      if (this._randomize) {
+        util.shuffle(this._items);
+      }
+    } catch (error) {
+      // throw { ...response, error };
+      throw Object.assign(response, { error });
+    }
+  }
+
+  /**
    * Sanitize the form items: check that the keys are valid, and fill in default values.
    *
    * @protected
    */
   _sanitizeItems() {
     const response = {
-      origin: "Form._sanitizeItems",
       context: "when sanitizing the form items",
+      origin: "Form._sanitizeItems",
     };
 
     try {
@@ -576,22 +403,6 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
   }
 
   /**
-   * Estimate the bounding box.
-   *
-   * @override
-   * @protected
-   */
-  _estimateBoundingBox() {
-    // take the alignment into account:
-    this._boundingBox = new PIXI.Rectangle(
-      this._pos[0] - this._size[0] / 2.0,
-      this._pos[1] - this._size[1] / 2.0,
-      this._size[0],
-      this._size[1],
-    );
-  }
-
-  /**
    * Setup the stimuli, and the scrollbar.
    *
    * @protected
@@ -615,11 +426,11 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
 
     // visual representations of the items:
     this._visual = {
-      rowHeights: [],
-      textStims: [],
       responseStims: [],
-      visibles: [],
+      rowHeights: [],
       stimuliTotalHeight: 0,
+      textStims: [],
+      visibles: [],
     };
 
     // instantiate the clip mask that will be used by all stimuli:
@@ -627,64 +438,64 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
 
     // default stimulus options:
     const textStimOption = {
-      win: this._win,
-      name: "item text",
-      font: this.font,
-      units: this._units,
       alignHoriz: "left",
       alignVert: "top",
-      height: this._fontSize,
-      color: this.itemColor,
-      ori: 0,
-      opacity: 1,
-      depth: this._depth - 1,
       clipMask: this._stimuliClipMask,
+      color: this.itemColor,
+      depth: this._depth - 1,
+      font: this.font,
+      height: this._fontSize,
+      name: "item text",
+      opacity: 1,
+      ori: 0,
+      units: this._units,
+      win: this._win,
     };
     const sliderOption = {
-      win: this._win,
-      name: "choice response",
-      units: this._units,
+      bold: false,
+      clipMask: this._stimuliClipMask,
+      color: this.responseColor,
+      depth: this._depth - 1,
       flip: false,
-      // Not part of Slider options as things stand
-      fontFamily: this.fontFamily,
       // As found in Slider options
       font: this.font,
-      bold: false,
-      italic: false,
+      // Not part of Slider options as things stand
+      fontFamily: this.fontFamily,
       fontSize: this._fontSize * this._responseTextHeightRatio,
-      color: this.responseColor,
-      markerColor: this.markerColor,
-      opacity: 1,
-      depth: this._depth - 1,
-      clipMask: this._stimuliClipMask,
       granularity: 1,
+      italic: false,
+      markerColor: this.markerColor,
+      name: "choice response",
+      opacity: 1,
+      units: this._units,
+      win: this._win,
     };
     const textBoxOption = {
-      win: this._win,
-      name: "free text response",
-      units: this._units,
-      anchor: "left-top",
-      flip: false,
-      opacity: 1,
-      depth: this._depth - 1,
-      font: this.font,
-      letterHeight: this._fontSize * this._responseTextHeightRatio,
-      bold: false,
-      italic: false,
       alignment: "left",
-      color: this.responseColor,
-      fillColor: this.fillColor,
-      contrast: 1.0,
+      anchor: "left-top",
+      bold: false,
       borderColor: this.responseColor,
       borderWidth: 0.002,
-      padding: 0.01,
-      editable: true,
       clipMask: this._stimuliClipMask,
+      color: this.responseColor,
+      contrast: 1.0,
+      depth: this._depth - 1,
+      editable: true,
+      fillColor: this.fillColor,
+      flip: false,
+      font: this.font,
+      italic: false,
+      letterHeight: this._fontSize * this._responseTextHeightRatio,
+      name: "free text response",
+      opacity: 1,
+      padding: 0.01,
+      units: this._units,
+      win: this._win,
     };
 
     // we use for the slider's tick size the height of a word:
     const textStim = new TextStim(
-      Object.assign(textStimOption, { text: "Ag", pos: [0, 0] }),
+      Object.assign(textStimOption, { pos: [0, 0], text: "Ag" }),
     );
     const textMetrics_px = textStim.getTextMetrics();
     const sliderTickSize = this._getLengthUnits(textMetrics_px.height) / 2;
@@ -752,10 +563,10 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
           flip = true;
         }
 
-        let style,
+        let granularity = 1,
           labels,
-          ticks,
-          granularity = 1;
+          style,
+          ticks;
         if (item.type === Form.Types.CHOICE) {
           style = [Slider.Style.RATING, Slider.Style.RADIO];
           labels = item.options;
@@ -774,13 +585,13 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
 
         responseStim = new Slider(
           Object.assign({}, sliderOption, {
-            granularity,
-            size: sliderSize,
-            style,
-            labels,
-            ticks,
             compact,
             flip,
+            granularity,
+            labels,
+            size: sliderSize,
+            style,
+            ticks,
           }),
         );
         responseHeight = responseStim.boundingBox.height;
@@ -808,8 +619,8 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
       else if (item.type === Form.Types.FREE_TEXT) {
         responseStim = new TextBox(
           Object.assign(textBoxOption, {
-            text: item.options,
             size: [responseWidth, -1],
+            text: item.options,
           }),
         );
         responseHeight = responseStim.boundingBox.height;
@@ -832,16 +643,16 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
     // note: we add this Form as a dependent stimulus such that the Form is redrawn whenever
     // the slider is updated
     this._scrollbar = new Slider({
-      win: this._win,
-      name: "scrollbar",
-      units: this._units,
       color: this.itemColor,
+      dependentStims: [this],
       depth: this._depth - 1,
+      name: "scrollbar",
       pos: [0, 0],
       size: [this._scrollbarWidth, this._size[1]],
       style: [Slider.Style.SLIDER],
       ticks: [0, -this._visual.stimuliTotalHeight / this._size[1]],
-      dependentStims: [this],
+      units: this._units,
+      win: this._win,
     });
     this._prevScrollbarMarkerPos = 0;
     this._scrollbar.setMarkerPos(this._prevScrollbarMarkerPos);
@@ -853,7 +664,84 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
       this._psychoJS.experimentLogger.exp(`Layout set for: ${this.name}`);
     }
   }
+  /**
+   * Update the form decorations (bounding box, lines between items, etc.)
+   *
+   * @protected
+   */
+  _updateDecorations() {
+    if (typeof this._pixi !== "undefined") {
+      this._pixi.destroy(true);
+    }
 
+    this._pixi = new PIXI.Graphics();
+    this._pixi.scale.x = 1;
+    this._pixi.scale.y = 1;
+    this._pixi.rotation = 0;
+    this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
+
+    this._pixi.alpha = this._opacity;
+    this._pixi.zIndex = -this._depth;
+
+    // apply the form clip mask (n.b., that is not the stimuli clip mask):
+    this._pixi.mask = this._clipMask;
+
+    // form background:
+    this._pixi.lineStyle(
+      1,
+      new Color(this.borderColor).int,
+      this._opacity,
+      0.5,
+    );
+    // this._decorations.beginFill(this._barFillColor.int, this._opacity);
+    this._pixi.beginFill(new Color(this.fillColor).int);
+    this._pixi.drawRect(
+      this._leftEdge_px,
+      this._bottomEdge_px,
+      this._size_px[0],
+      this._size_px[1],
+    );
+    // this._decorations.endFill();
+    this._pixi.endFill();
+
+    // item decorators:
+    this._decorations = new PIXI.Graphics();
+    this._pixi.addChild(this._decorations);
+    this._decorations.mask = this._stimuliClipMask;
+    this._decorations.lineStyle(1, new Color("gray").int, this._opacity, 0.5);
+    this._decorations.alpha = 0.5;
+
+    for (let i = 0; i < this._items.length; ++i) {
+      if (this._visual.visibles[i]) {
+        const item = this._items[i];
+        // background for headings and descriptions:
+        if (
+          item.type === Form.Types.HEADING ||
+          item.type === Form.Types.DESCRIPTION
+        ) {
+          const textStim = this._visual.textStims[i];
+          const textStimPos = [
+            this._leftEdge + textStim._relativePos[0],
+            this._topEdge + textStim._relativePos[1] - this._scrollbarOffset,
+          ];
+          const textStimPos_px = util.to_px(
+            textStimPos,
+            this._units,
+            this._win,
+          );
+          this._decorations.beginFill(new Color("darkgray").int);
+          this._decorations.drawRect(
+            textStimPos_px[0] - this._itemPadding_px / 2,
+            textStimPos_px[1] + this._itemPadding_px / 2,
+            this._size_px[0] - this._itemPadding_px - this._scrollbarWidth_px,
+            -this._getLengthPix(this._visual.rowHeights[i]) -
+              this._itemPadding_px,
+          );
+          this._decorations.endFill();
+        }
+      }
+    }
+  }
   /**
    * Update the form visual representation, if necessary.
    *
@@ -965,82 +853,195 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
   }
 
   /**
-   * Update the form decorations (bounding box, lines between items, etc.)
+   * Add the form data to the given experiment.
    *
-   * @protected
+   * @param {module:data.ExperimentHandler} experiment - the experiment into which to insert the form data
+   * @param {string} [format= 'rows'] - whether to insert the data as rows or as columns
    */
-  _updateDecorations() {
-    if (typeof this._pixi !== "undefined") {
-      this._pixi.destroy(true);
+  addDataToExp(experiment, format = "rows") {
+    const addAsColumns = ["cols", "columns"].includes(format.toLowerCase());
+    const data = this.getData();
+
+    const _doNotSave = [
+      "itemCtrl",
+      "responseCtrl",
+      "itemColor",
+      "options",
+      "ticks",
+      "tickLabels",
+      "responseWidth",
+      "responseColor",
+      "layout",
+    ];
+
+    for (const item of this.getData()) {
+      let index = 0;
+      for (const field in item) {
+        if (!_doNotSave.includes(field)) {
+          const columnName = addAsColumns
+            ? `${this._name}[${index}]${field}`
+            : `${this._name}${field}`;
+          experiment.addData(columnName, item[field]);
+        }
+        ++index;
+      }
+
+      if (!addAsColumns) {
+        experiment.nextEntry();
+      }
     }
 
-    this._pixi = new PIXI.Graphics();
-    this._pixi.scale.x = 1;
-    this._pixi.scale.y = 1;
-    this._pixi.rotation = 0;
-    this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
+    if (addAsColumns) {
+      experiment.nextEntry();
+    }
+  }
 
-    this._pixi.alpha = this._opacity;
-    this._pixi.zIndex = -this._depth;
+  /**
+   * Overridden draw that also calls the draw method of all form elements.
+   *
+   * @override
+   */
+  draw() {
+    // if the scrollbar's marker position has changed then the layout must be updated:
+    if (this._scrollbar.markerPos !== this._prevScrollbarMarkerPos) {
+      this._prevScrollbarMarkerPos = this._scrollbar.markerPos;
+      this._needUpdate = true;
+    }
 
-    // apply the form clip mask (n.b., that is not the stimuli clip mask):
-    this._pixi.mask = this._clipMask;
+    // draw the decorations:
+    super.draw();
 
-    // form background:
-    this._pixi.lineStyle(
-      1,
-      new Color(this.borderColor).int,
-      this._opacity,
-      0.5,
-    );
-    // this._decorations.beginFill(this._barFillColor.int, this._opacity);
-    this._pixi.beginFill(new Color(this.fillColor).int);
-    this._pixi.drawRect(
-      this._leftEdge_px,
-      this._bottomEdge_px,
-      this._size_px[0],
-      this._size_px[1],
-    );
-    // this._decorations.endFill();
-    this._pixi.endFill();
-
-    // item decorators:
-    this._decorations = new PIXI.Graphics();
-    this._pixi.addChild(this._decorations);
-    this._decorations.mask = this._stimuliClipMask;
-    this._decorations.lineStyle(1, new Color("gray").int, this._opacity, 0.5);
-    this._decorations.alpha = 0.5;
-
+    // draw the stimuli:
     for (let i = 0; i < this._items.length; ++i) {
       if (this._visual.visibles[i]) {
-        const item = this._items[i];
-        // background for headings and descriptions:
-        if (
-          item.type === Form.Types.HEADING ||
-          item.type === Form.Types.DESCRIPTION
-        ) {
-          const textStim = this._visual.textStims[i];
-          const textStimPos = [
-            this._leftEdge + textStim._relativePos[0],
-            this._topEdge + textStim._relativePos[1] - this._scrollbarOffset,
-          ];
-          const textStimPos_px = util.to_px(
-            textStimPos,
-            this._units,
-            this._win,
-          );
-          this._decorations.beginFill(new Color("darkgray").int);
-          this._decorations.drawRect(
-            textStimPos_px[0] - this._itemPadding_px / 2,
-            textStimPos_px[1] + this._itemPadding_px / 2,
-            this._size_px[0] - this._itemPadding_px - this._scrollbarWidth_px,
-            -this._getLengthPix(this._visual.rowHeights[i]) -
-              this._itemPadding_px,
-          );
-          this._decorations.endFill();
+        const textStim = this._visual.textStims[i];
+        textStim.draw();
+
+        const responseStim = this._visual.responseStims[i];
+        if (responseStim) {
+          responseStim.draw();
         }
       }
     }
+
+    // draw the scrollbar:
+    this._scrollbar.draw();
+  }
+
+  /**
+   * Check if the form is complete.
+   *
+   * @return {boolean} - whether there are any remaining incomplete responses.
+   */
+  formComplete() {
+    // same as complete but might be used by some experiments before 2020.2
+    this.getData();
+    return this._items._complete;
+  }
+
+  /**
+   * Collate the questions and responses into a single dataset.
+   *
+   * @return {object} - the dataset with all questions and responses.
+   */
+  getData() {
+    let nbIncompleteResponse = 0;
+
+    for (let i = 0; i < this._items.length; ++i) {
+      const item = this._items[i];
+      const responseStim = this._visual.responseStims[i];
+      if (responseStim) {
+        if (
+          item.type === Form.Types.CHOICE ||
+          item.type === Form.Types.RATING ||
+          item.type === Form.Types.SLIDER
+        ) {
+          item.response = responseStim.getRating();
+          item.rt = responseStim.getRT();
+
+          if (typeof item.response === "undefined") {
+            ++nbIncompleteResponse;
+          }
+        } else if (item.type === Form.Types.FREE_TEXT) {
+          item.response = responseStim.text;
+          item.rt = undefined;
+
+          if (item.response.length === 0) {
+            ++nbIncompleteResponse;
+          }
+        }
+      }
+    }
+
+    this._items._complete = nbIncompleteResponse === 0;
+
+    // return a copy of this._items:
+    return this._items.map((item) => Object.assign({}, item));
+  }
+
+  /**
+   * Overridden hide that also calls the hide method of all form elements.
+   *
+   * @override
+   */
+  hide() {
+    // hide the decorations:
+    super.hide();
+
+    // hide the stimuli:
+    if (typeof this._items !== "undefined") {
+      for (let i = 0; i < this._items.length; ++i) {
+        if (this._visual.visibles[i]) {
+          const textStim = this._visual.textStims[i];
+          textStim.hide();
+
+          const responseStim = this._visual.responseStims[i];
+          if (responseStim) {
+            responseStim.hide();
+          }
+        }
+      }
+
+      // hide the scrollbar:
+      this._scrollbar.hide();
+    }
+  }
+
+  /**
+   * Force a refresh of the stimulus.
+   */
+  refresh() {
+    super.refresh();
+
+    for (let i = 0; i < this._items.length; ++i) {
+      const textStim = this._visual.textStims[i];
+      textStim.refresh();
+
+      const responseStim = this._visual.responseStims[i];
+      if (responseStim) {
+        responseStim.refresh();
+      }
+    }
+  }
+
+  /**
+   * Reset the form.
+   */
+  reset() {
+    this.psychoJS.logger.debug("reset Form: ", this._name);
+
+    // reset the stimuli:
+    for (let i = 0; i < this._items.length; ++i) {
+      const textStim = this._visual.textStims[i];
+      textStim.reset();
+
+      const responseStim = this._visual.responseStims[i];
+      if (responseStim) {
+        responseStim.reset();
+      }
+    }
+
+    this._needUpdate = true;
   }
 }
 
@@ -1051,13 +1052,13 @@ export class Form extends util.mix(VisualStim).with(ColorMixin) {
  * @readonly
  */
 Form.Types = {
-  HEADING: Symbol.for("HEADING"),
+  CHOICE: Symbol.for("CHOICE"),
   DESCRIPTION: Symbol.for("DESCRIPTION"),
+  FREE_TEXT: Symbol.for("FREE_TEXT"),
+  HEADING: Symbol.for("HEADING"),
+  RADIO: Symbol.for("RADIO"),
   RATING: Symbol.for("RATING"),
   SLIDER: Symbol.for("SLIDER"),
-  FREE_TEXT: Symbol.for("FREE_TEXT"),
-  CHOICE: Symbol.for("CHOICE"),
-  RADIO: Symbol.for("RADIO"),
 };
 
 /**
@@ -1079,16 +1080,16 @@ Form.Layout = {
  *
  */
 Form._defaultItems = {
-  itemText: "Default question",
-  type: "rating",
-  options: "Yes, No",
-  tickLabels: "",
-  itemWidth: 0.7,
-  itemColor: "white",
-
-  responseWidth: 0.3,
-  responseColor: "white",
-
   index: 0,
+  itemColor: "white",
+  itemText: "Default question",
+  itemWidth: 0.7,
   layout: "horiz",
+  options: "Yes, No",
+
+  responseColor: "white",
+  responseWidth: 0.3,
+
+  tickLabels: "",
+  type: "rating",
 };

@@ -23,6 +23,19 @@ export class SoundPlayer extends PsychObject {
   }
 
   /**
+   * Get the duration of the sound, in seconds.
+   *
+   * @abstract
+   */
+  getDuration() {
+    throw {
+      context: "when getting the duration of the sound",
+      error: "this method is abstract and should not be called.",
+      origin: "SoundPlayer.getDuration",
+    };
+  }
+
+  /**
    * Start playing the sound.
    *
    * @abstract
@@ -30,35 +43,9 @@ export class SoundPlayer extends PsychObject {
    */
   play(loops) {
     throw {
-      origin: "SoundPlayer.play",
       context: "when starting the playback of a sound",
       error: "this method is abstract and should not be called.",
-    };
-  }
-
-  /**
-   * Stop playing the sound immediately.
-   *
-   * @abstract
-   */
-  stop() {
-    throw {
-      origin: "SoundPlayer.stop",
-      context: "when stopping the playback of a sound",
-      error: "this method is abstract and should not be called.",
-    };
-  }
-
-  /**
-   * Get the duration of the sound, in seconds.
-   *
-   * @abstract
-   */
-  getDuration() {
-    throw {
-      origin: "SoundPlayer.getDuration",
-      context: "when getting the duration of the sound",
-      error: "this method is abstract and should not be called.",
+      origin: "SoundPlayer.play",
     };
   }
 
@@ -69,9 +56,9 @@ export class SoundPlayer extends PsychObject {
    */
   setDuration(duration_s) {
     throw {
-      origin: "SoundPlayer.setDuration",
       context: "when setting the duration of the sound",
       error: "this method is abstract and should not be called.",
+      origin: "SoundPlayer.setDuration",
     };
   }
 
@@ -83,9 +70,9 @@ export class SoundPlayer extends PsychObject {
    */
   setLoops(loops) {
     throw {
-      origin: "SoundPlayer.setLoops",
       context: "when setting the number of loops",
       error: "this method is abstract and should not be called.",
+      origin: "SoundPlayer.setLoops",
     };
   }
 
@@ -98,9 +85,22 @@ export class SoundPlayer extends PsychObject {
    */
   setVolume(volume, mute = false) {
     throw {
-      origin: "SoundPlayer.setVolume",
       context: "when setting the volume of the sound",
       error: "this method is abstract and should not be called.",
+      origin: "SoundPlayer.setVolume",
+    };
+  }
+
+  /**
+   * Stop playing the sound immediately.
+   *
+   * @abstract
+   */
+  stop() {
+    throw {
+      context: "when stopping the playback of a sound",
+      error: "this method is abstract and should not be called.",
+      origin: "SoundPlayer.stop",
     };
   }
 }

@@ -7,6 +7,7 @@
  */
 
 import * as PIXI from "pixi.js-legacy";
+
 import { to_px } from "./Util.js";
 
 /**

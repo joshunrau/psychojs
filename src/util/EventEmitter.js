@@ -36,46 +36,28 @@ export class EventEmitter {
    */
 
   /**
-   * Register a new listener for events with the given name emitted by this instance.
+   * Emit an event with a given name and associated data.
    *
    * @param {String} name - the name of the event
-   * @param {module:util.EventEmitter~Listener} listener - a listener called upon emission of the event
-   * @return string - the unique identifier associated with that (event, listener) pair (useful to remove the listener)
+   * @param {object} data - the data of the event
+   * @return {boolean} true if at least one listener has been registered for that event, and false otherwise
    */
-  on(name, listener) {
-    // check that the listener is a function:
-    if (typeof listener !== "function") {
-      throw new TypeError("listener must be a function");
+  emit(name, data) {
+    let relevantUuidListeners = this._listeners.get(name);
+    if (relevantUuidListeners && relevantUuidListeners.length) {
+      let onceUuids = this._onceUuids.get(name);
+      let self = this;
+      relevantUuidListeners.forEach(({ listener, uuid }) => {
+        listener(data);
+
+        if (typeof onceUuids !== "undefined" && onceUuids.includes(uuid)) {
+          self.off(name, uuid);
+        }
+      });
+      return true;
     }
 
-    // generate a new uuid:
-    let uuid = util.makeUuid();
-
-    // add the listener to the event map:
-    if (!this._listeners.has(name)) {
-      this._listeners.set(name, []);
-    }
-    this._listeners.get(name).push({ uuid, listener });
-
-    return uuid;
-  }
-
-  /**
-   * Register a new listener for the given event name, and remove it as soon as the event has been emitted.
-   *
-   * @param {String} name - the name of the event
-   * @param {module:util.EventEmitter~Listener} listener - a listener called upon emission of the event
-   * @return string - the unique identifier associated with that (event, listener) pair (useful to remove the listener)
-   */
-  once(name, listener) {
-    let uuid = this.on(name, listener);
-
-    if (!this._onceUuids.has(name)) {
-      this._onceUuids.set(name, []);
-    }
-    this._onceUuids.get(name).push(uuid);
-
-    return uuid;
+    return false;
   }
 
   /**
@@ -100,27 +82,45 @@ export class EventEmitter {
   }
 
   /**
-   * Emit an event with a given name and associated data.
+   * Register a new listener for events with the given name emitted by this instance.
    *
    * @param {String} name - the name of the event
-   * @param {object} data - the data of the event
-   * @return {boolean} true if at least one listener has been registered for that event, and false otherwise
+   * @param {module:util.EventEmitter~Listener} listener - a listener called upon emission of the event
+   * @return string - the unique identifier associated with that (event, listener) pair (useful to remove the listener)
    */
-  emit(name, data) {
-    let relevantUuidListeners = this._listeners.get(name);
-    if (relevantUuidListeners && relevantUuidListeners.length) {
-      let onceUuids = this._onceUuids.get(name);
-      let self = this;
-      relevantUuidListeners.forEach(({ uuid, listener }) => {
-        listener(data);
-
-        if (typeof onceUuids !== "undefined" && onceUuids.includes(uuid)) {
-          self.off(name, uuid);
-        }
-      });
-      return true;
+  on(name, listener) {
+    // check that the listener is a function:
+    if (typeof listener !== "function") {
+      throw new TypeError("listener must be a function");
     }
 
-    return false;
+    // generate a new uuid:
+    let uuid = util.makeUuid();
+
+    // add the listener to the event map:
+    if (!this._listeners.has(name)) {
+      this._listeners.set(name, []);
+    }
+    this._listeners.get(name).push({ listener, uuid });
+
+    return uuid;
+  }
+
+  /**
+   * Register a new listener for the given event name, and remove it as soon as the event has been emitted.
+   *
+   * @param {String} name - the name of the event
+   * @param {module:util.EventEmitter~Listener} listener - a listener called upon emission of the event
+   * @return string - the unique identifier associated with that (event, listener) pair (useful to remove the listener)
+   */
+  once(name, listener) {
+    let uuid = this.on(name, listener);
+
+    if (!this._onceUuids.has(name)) {
+      this._onceUuids.set(name, []);
+    }
+    this._onceUuids.get(name).push(uuid);
+
+    return uuid;
   }
 }

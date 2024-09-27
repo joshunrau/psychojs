@@ -8,6 +8,7 @@
 
 import log4javascript from "log4javascript";
 import pako from "pako";
+
 import { ExperimentHandler } from "../data/ExperimentHandler.js";
 import { MonotonicClock } from "../util/Clock.js";
 import * as util from "../util/Util.js";
@@ -27,7 +28,7 @@ export class Logger {
     this._psychoJS = psychoJS;
 
     // browser console logger:
-    this.consoleLogger = log4javascript.getLogger("psychojs");
+    this.consoleLogger = log4javascript.getLogger("psychojs")
 
     const appender = new log4javascript.BrowserConsoleAppender();
     appender.setLayout(this._customConsoleLayout());
@@ -43,232 +44,24 @@ export class Logger {
 
     // throttling of server logs
     this._throttling = {
-      // period of time (in seconds) over which we consider the number of logged messages:
-      window: 1,
-      // threshold (i.e. number of messages over the throttling window) at which point
-      // we start throttling:
-      threshold: 20,
+      // whether or not the designer has already been warned:
+      designerWasWarned: false,
       // throttling factor: 10 -> only 1 in 10 messages is logged
       factor: 10,
+      // throttling message index:
+      index: 0,
+      // whether or not we are currently throttling:
+      isThrottling: false,
       // minimum duration (in seconds) of throttling
       minimumDuration: 2,
       // time at which throttling started:
       startOfThrottling: 0,
-      // whether or not we are currently throttling:
-      isThrottling: false,
-      // throttling message index:
-      index: 0,
-      // whether or not the designer has already been warned:
-      designerWasWarned: false,
+      // threshold (i.e. number of messages over the throttling window) at which point
+      // we start throttling:
+      threshold: 20,
+      // period of time (in seconds) over which we consider the number of logged messages:
+      window: 1,
     };
-  }
-
-  /**
-   * Change the logging level.
-   *
-   * @param {module:core.Logger.ServerLevel} serverLevel - the new logging level
-   */
-  setLevel(serverLevel) {
-    this._serverLevel = serverLevel;
-    this._serverLevelValue = this._getValue(this._serverLevel);
-  }
-
-  /**
-   * Log a server message at the EXP level.
-   *
-   * @param {string} msg - the message to be logged.
-   * @param {number} [time] - the logging time
-   * @param {object} [obj] - the associated object (e.g. a Trial)
-   */
-  exp(msg, time, obj) {
-    this.log(msg, Logger.ServerLevel.EXP, time, obj);
-  }
-
-  /**
-   * Log a server message at the DATA level.
-   *
-   * @param {string} msg - the message to be logged.
-   * @param {number} [time] - the logging time
-   * @param {object} [obj] - the associated object (e.g. a Trial)
-   */
-  data(msg, time, obj) {
-    this.log(msg, Logger.ServerLevel.DATA, time, obj);
-  }
-
-  /**
-   * Log a server message.
-   *
-   * @param {string} msg - the message to be logged.
-   * @param {module:core.Logger.ServerLevel} level - logging level
-   * @param {number} [time] - the logging time
-   * @param {object} [obj] - the associated object (e.g. a Trial)
-   */
-  log(msg, level, time, obj) {
-    // only log if the level is higher or equal to the previously defined server level:
-    const levelValue = this._getValue(level);
-    if (levelValue < this._serverLevelValue) {
-      return;
-    }
-
-    if (typeof time === "undefined") {
-      time = MonotonicClock.getReferenceTime();
-    }
-
-    /* [coming soon]
-		// check whether we need to throttle:
-		if (this._throttle(time))
-		{
-			return;
-		}
-	 */
-
-    this._serverLogs.push({
-      msg,
-      level,
-      time,
-      obj: util.toString(obj),
-    });
-  }
-
-  /**
-   * Check whether or not a log messages must be throttled.
-   *
-   * @protected
-   * @param {number} time - the time of the latest log message
-   * @return {boolean} whether or not to log the message
-   */
-  _throttle(time) {
-    // if more messages than this._throttling.threshold have been logged between
-    // time and the start of the throttling window, we need to throttle:
-    if (this._serverLogs.length > this._throttling.threshold) {
-      const timeAtStartThrottlingWindow =
-        this._serverLogs[
-          this._serverLogs.length - 1 - this._throttling.threshold
-        ].time;
-      if (time - timeAtStartThrottlingWindow < this._throttling.window) {
-        // warn the designer if we are not already throttling:
-        if (!this._throttling.isThrottling) {
-          const msg =
-            `[time= ${time.toFixed(3)}] More than ${this._throttling.threshold} messages were logged in the past ${this._throttling.window}s.` +
-            `We are now throttling: only 1 in ${this._throttling.factor} messages will be logged.` +
-            `You may want to change your experiment's logging level. Please see <a href="https://www.psychopy.org/api/logging.html">psychopy.org/api/logging.html</a> for details.`;
-
-          // console warning:
-          this._psychoJS.logger.warn(msg);
-
-          // in PILOTING mode and locally, we also warn the experimenter with a dialog box,
-          // but only once:
-          if (
-            !this._throttling.designerWasWarned &&
-            (this._psychoJS.getEnvironment() ===
-              ExperimentHandler.Environment.LOCAL ||
-              this._psychoJS.config.experiment.status === "PILOTING")
-          ) {
-            this._throttling.designerWasWarned = true;
-
-            this._psychoJS.gui.dialog({
-              warning: msg,
-              showOK: true,
-            });
-          }
-
-          this._throttling.isThrottling = true;
-          this._throttling.startOfThrottling = time;
-          this._throttling.index = 0;
-        }
-
-        ++this._throttling.index;
-        if (this._throttling.index < this._throttling.factor) {
-          // no logging
-          return true;
-        } else {
-          this._throttling.index = 0;
-        }
-      } else {
-        if (
-          this._throttling.isThrottling &&
-          time - this._throttling.startOfThrottling >
-            this._throttling.minimumDuration
-        ) {
-          this._psychoJS.logger.info(
-            `[time= ${time.toFixed(3)}] Log messages are not throttled any longer.`,
-          );
-          this._throttling.isThrottling = false;
-        }
-      }
-    }
-
-    return false;
-  }
-
-  /**
-   * Flush all server logs to the server.
-   *
-   * <p>Note: the logs are compressed using Pako's zlib algorithm.
-   * See https://github.com/nodeca/pako for details.</p>
-   */
-  async flush() {
-    const response = {
-      origin: "Logger.flush",
-      context:
-        "when flushing participant's logs for experiment: " +
-        this._psychoJS.config.experiment.fullpath,
-    };
-
-    this._psychoJS.logger.info("[PsychoJS] Flush server logs.");
-
-    // prepare the formatted logs:
-    let formattedLogs = "";
-    for (const log of this._serverLogs) {
-      let formattedLog =
-        util.toString(log.time) +
-        "\t" +
-        Symbol.keyFor(log.level) +
-        "\t" +
-        log.msg;
-      if (log.obj !== "undefined") {
-        formattedLog += "\t" + log.obj;
-      }
-      formattedLog += "\n";
-
-      formattedLogs += formattedLog;
-    }
-
-    // send logs to the server or display them in the console:
-    if (
-      this._psychoJS.getEnvironment() ===
-        ExperimentHandler.Environment.SERVER &&
-      this._psychoJS.config.experiment.status === "RUNNING" &&
-      !this._psychoJS._serverMsg.has("__pilotToken")
-    ) {
-      // if the pako compression library is present, we compress the logs:
-      if (typeof pako !== "undefined") {
-        try {
-          const utf16DeflatedLogs = pako.deflate(formattedLogs, {
-            to: "string",
-          });
-          // const utf16DeflatedLogs = pako.deflate(unescape(encodeURIComponent(formattedLogs)), {to: 'string'});
-          const base64DeflatedLogs = btoa(utf16DeflatedLogs);
-
-          return await this._psychoJS.serverManager.uploadLog(
-            base64DeflatedLogs,
-            true,
-          );
-        } catch (error) {
-          console.error("log compression error:", error);
-          throw Object.assign(response, { error: error });
-        }
-      }
-      // the pako compression library is not present, we do not compress the logs:
-      else {
-        return await this._psychoJS.serverManager.uploadLog(
-          formattedLogs,
-          false,
-        );
-      }
-    } else {
-      this._psychoJS.logger.debug("\n" + formattedLogs);
-    }
   }
 
   /**
@@ -350,6 +143,214 @@ export class Logger {
       ? Logger._ServerLevelValue[levelAsString]
       : 30;
   }
+
+  /**
+   * Check whether or not a log messages must be throttled.
+   *
+   * @protected
+   * @param {number} time - the time of the latest log message
+   * @return {boolean} whether or not to log the message
+   */
+  _throttle(time) {
+    // if more messages than this._throttling.threshold have been logged between
+    // time and the start of the throttling window, we need to throttle:
+    if (this._serverLogs.length > this._throttling.threshold) {
+      const timeAtStartThrottlingWindow =
+        this._serverLogs[
+          this._serverLogs.length - 1 - this._throttling.threshold
+        ].time;
+      if (time - timeAtStartThrottlingWindow < this._throttling.window) {
+        // warn the designer if we are not already throttling:
+        if (!this._throttling.isThrottling) {
+          const msg =
+            `[time= ${time.toFixed(3)}] More than ${this._throttling.threshold} messages were logged in the past ${this._throttling.window}s.` +
+            `We are now throttling: only 1 in ${this._throttling.factor} messages will be logged.` +
+            `You may want to change your experiment's logging level. Please see <a href="https://www.psychopy.org/api/logging.html">psychopy.org/api/logging.html</a> for details.`;
+
+          // console warning:
+          this._psychoJS.logger.warn(msg);
+
+          // in PILOTING mode and locally, we also warn the experimenter with a dialog box,
+          // but only once:
+          if (
+            !this._throttling.designerWasWarned &&
+            (this._psychoJS.getEnvironment() ===
+              ExperimentHandler.Environment.LOCAL ||
+              this._psychoJS.config.experiment.status === "PILOTING")
+          ) {
+            this._throttling.designerWasWarned = true;
+
+            this._psychoJS.gui.dialog({
+              showOK: true,
+              warning: msg,
+            });
+          }
+
+          this._throttling.isThrottling = true;
+          this._throttling.startOfThrottling = time;
+          this._throttling.index = 0;
+        }
+
+        ++this._throttling.index;
+        if (this._throttling.index < this._throttling.factor) {
+          // no logging
+          return true;
+        } else {
+          this._throttling.index = 0;
+        }
+      } else {
+        if (
+          this._throttling.isThrottling &&
+          time - this._throttling.startOfThrottling >
+            this._throttling.minimumDuration
+        ) {
+          this._psychoJS.logger.info(
+            `[time= ${time.toFixed(3)}] Log messages are not throttled any longer.`,
+          );
+          this._throttling.isThrottling = false;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Log a server message at the DATA level.
+   *
+   * @param {string} msg - the message to be logged.
+   * @param {number} [time] - the logging time
+   * @param {object} [obj] - the associated object (e.g. a Trial)
+   */
+  data(msg, time, obj) {
+    this.log(msg, Logger.ServerLevel.DATA, time, obj);
+  }
+
+  /**
+   * Log a server message at the EXP level.
+   *
+   * @param {string} msg - the message to be logged.
+   * @param {number} [time] - the logging time
+   * @param {object} [obj] - the associated object (e.g. a Trial)
+   */
+  exp(msg, time, obj) {
+    this.log(msg, Logger.ServerLevel.EXP, time, obj);
+  }
+
+  /**
+   * Flush all server logs to the server.
+   *
+   * <p>Note: the logs are compressed using Pako's zlib algorithm.
+   * See https://github.com/nodeca/pako for details.</p>
+   */
+  async flush() {
+    const response = {
+      context:
+        "when flushing participant's logs for experiment: " +
+        this._psychoJS.config.experiment.fullpath,
+      origin: "Logger.flush",
+    };
+
+    this._psychoJS.logger.info("[PsychoJS] Flush server logs.");
+
+    // prepare the formatted logs:
+    let formattedLogs = "";
+    for (const log of this._serverLogs) {
+      let formattedLog =
+        util.toString(log.time) +
+        "\t" +
+        Symbol.keyFor(log.level) +
+        "\t" +
+        log.msg;
+      if (log.obj !== "undefined") {
+        formattedLog += "\t" + log.obj;
+      }
+      formattedLog += "\n";
+
+      formattedLogs += formattedLog;
+    }
+
+    // send logs to the server or display them in the console:
+    if (
+      this._psychoJS.getEnvironment() ===
+        ExperimentHandler.Environment.SERVER &&
+      this._psychoJS.config.experiment.status === "RUNNING" &&
+      !this._psychoJS._serverMsg.has("__pilotToken")
+    ) {
+      // if the pako compression library is present, we compress the logs:
+      if (typeof pako !== "undefined") {
+        try {
+          const utf16DeflatedLogs = pako.deflate(formattedLogs, {
+            to: "string",
+          });
+          // const utf16DeflatedLogs = pako.deflate(unescape(encodeURIComponent(formattedLogs)), {to: 'string'});
+          const base64DeflatedLogs = btoa(utf16DeflatedLogs);
+
+          return await this._psychoJS.serverManager.uploadLog(
+            base64DeflatedLogs,
+            true,
+          );
+        } catch (error) {
+          console.error("log compression error:", error);
+          throw Object.assign(response, { error: error });
+        }
+      }
+      // the pako compression library is not present, we do not compress the logs:
+      else {
+        return await this._psychoJS.serverManager.uploadLog(
+          formattedLogs,
+          false,
+        );
+      }
+    } else {
+      this._psychoJS.logger.debug("\n" + formattedLogs);
+    }
+  }
+
+  /**
+   * Log a server message.
+   *
+   * @param {string} msg - the message to be logged.
+   * @param {module:core.Logger.ServerLevel} level - logging level
+   * @param {number} [time] - the logging time
+   * @param {object} [obj] - the associated object (e.g. a Trial)
+   */
+  log(msg, level, time, obj) {
+    // only log if the level is higher or equal to the previously defined server level:
+    const levelValue = this._getValue(level);
+    if (levelValue < this._serverLevelValue) {
+      return;
+    }
+
+    if (typeof time === "undefined") {
+      time = MonotonicClock.getReferenceTime();
+    }
+
+    /* [coming soon]
+		// check whether we need to throttle:
+		if (this._throttle(time))
+		{
+			return;
+		}
+	 */
+
+    this._serverLogs.push({
+      level,
+      msg,
+      obj: util.toString(obj),
+      time,
+    });
+  }
+
+  /**
+   * Change the logging level.
+   *
+   * @param {module:core.Logger.ServerLevel} serverLevel - the new logging level
+   */
+  setLevel(serverLevel) {
+    this._serverLevel = serverLevel;
+    this._serverLevelValue = this._getValue(this._serverLevel);
+  }
 }
 
 /**
@@ -362,13 +363,13 @@ export class Logger {
  */
 Logger.ServerLevel = {
   CRITICAL: Symbol.for("CRITICAL"),
-  ERROR: Symbol.for("ERROR"),
-  WARNING: Symbol.for("WARNING"),
   DATA: Symbol.for("DATA"),
+  DEBUG: Symbol.for("DEBUG"),
+  ERROR: Symbol.for("ERROR"),
   EXP: Symbol.for("EXP"),
   INFO: Symbol.for("INFO"),
-  DEBUG: Symbol.for("DEBUG"),
   NOTSET: Symbol.for("NOTSET"),
+  WARNING: Symbol.for("WARNING"),
 };
 
 /**
@@ -382,11 +383,11 @@ Logger.ServerLevel = {
  */
 Logger._ServerLevelValue = {
   CRITICAL: 50,
-  ERROR: 40,
-  WARNING: 30,
   DATA: 25,
+  DEBUG: 10,
+  ERROR: 40,
   EXP: 22,
   INFO: 20,
-  DEBUG: 10,
   NOTSET: 0,
+  WARNING: 30,
 };

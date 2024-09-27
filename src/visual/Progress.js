@@ -1,41 +1,42 @@
 import * as PIXI from "pixi.js-legacy";
-import * as util from "../util/Util.js";
+
 import { Color } from "../util/Color.js";
 import { to_pixiPoint } from "../util/Pixi.js";
+import * as util from "../util/Util.js";
 import { VisualStim } from "./VisualStim.js";
 
 export class Progress extends VisualStim {
   constructor({
-    name,
-    win,
-    units = "pix",
-    ori,
-    opacity,
-    depth,
-    pos,
     anchor = "left",
-    size = [300, 30],
-    clipMask,
     autoDraw,
     autoLog,
-    progress = 1,
-    type,
+    clipMask,
+    depth,
     fillColor,
     fillTexture,
+    name,
+    opacity,
+    ori,
+    pos,
+    progress = 1,
+    size = [300, 30],
+    type,
+    units = "pix",
+    win,
   }) {
     super({
-      name,
-      win,
-      units,
-      ori,
-      opacity,
-      depth,
-      pos,
       anchor,
-      size,
-      clipMask,
       autoDraw,
       autoLog,
+      clipMask,
+      depth,
+      name,
+      opacity,
+      ori,
+      pos,
+      size,
+      units,
+      win,
     });
 
     this._addAttribute("progress", progress, 0);
@@ -47,39 +48,6 @@ export class Progress extends VisualStim {
       this._psychoJS.experimentLogger.exp(
         `Created ${this.name} = ${this.toString()}`,
       );
-    }
-  }
-
-  /**
-   * Setter for the progress attribute.
-   */
-  setProgress(progress = 0, log = false) {
-    this._setAttribute("progress", Math.min(1.0, Math.max(0.0, progress)), log);
-    if (this._pixi !== undefined) {
-      this._pixi.clear();
-      const size_px = util.to_px(this._size, this._units, this._win);
-      const progressWidth = size_px[0] * this._progress;
-      if (this._fillTexture) {
-        let t = PIXI.Texture.WHITE;
-        if (typeof this._fillTexture === "string") {
-          t = PIXI.Texture.from(this._fillTexture);
-          t.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
-        }
-        this._pixi.beginTextureFill({
-          texture: t,
-        });
-      } else {
-        this._pixi.beginFill(new Color(this._fillColor).int, this._opacity);
-      }
-
-      if (this._type === PROGRESS_TYPES.BAR) {
-        this._pixi.drawRect(0, 0, progressWidth, size_px[1]);
-      }
-
-      this._pixi.endFill();
-
-      // TODO: is there a better way to ensure anchor works?
-      this.anchor = this._anchor;
     }
   }
 
@@ -138,6 +106,39 @@ export class Progress extends VisualStim {
     this._pixi.rotation = (-this.ori * Math.PI) / 180.0;
 
     this._estimateBoundingBox();
+  }
+
+  /**
+   * Setter for the progress attribute.
+   */
+  setProgress(progress = 0, log = false) {
+    this._setAttribute("progress", Math.min(1.0, Math.max(0.0, progress)), log);
+    if (this._pixi !== undefined) {
+      this._pixi.clear();
+      const size_px = util.to_px(this._size, this._units, this._win);
+      const progressWidth = size_px[0] * this._progress;
+      if (this._fillTexture) {
+        let t = PIXI.Texture.WHITE;
+        if (typeof this._fillTexture === "string") {
+          t = PIXI.Texture.from(this._fillTexture);
+          t.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
+        }
+        this._pixi.beginTextureFill({
+          texture: t,
+        });
+      } else {
+        this._pixi.beginFill(new Color(this._fillColor).int, this._opacity);
+      }
+
+      if (this._type === PROGRESS_TYPES.BAR) {
+        this._pixi.drawRect(0, 0, progressWidth, size_px[1]);
+      }
+
+      this._pixi.endFill();
+
+      // TODO: is there a better way to ensure anchor works?
+      this.anchor = this._anchor;
+    }
   }
 }
 

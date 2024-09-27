@@ -37,42 +37,42 @@ export class Rect extends ShapeStim {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    name,
-    win,
-    lineWidth,
-    lineColor,
-    fillColor,
-    opacity,
-    width,
-    height,
-    pos,
     anchor,
-    size,
-    ori,
-    units,
-    contrast,
-    depth,
-    interpolate,
     autoDraw,
     autoLog,
+    contrast,
+    depth,
+    fillColor,
+    height,
+    interpolate,
+    lineColor,
+    lineWidth,
+    name,
+    opacity,
+    ori,
+    pos,
+    size,
+    units,
+    width,
+    win,
   } = {}) {
     super({
-      name,
-      win,
-      lineWidth,
-      lineColor,
-      fillColor,
-      opacity,
-      pos,
       anchor,
-      ori,
-      size,
-      units,
-      contrast,
-      depth,
-      interpolate,
       autoDraw,
       autoLog,
+      contrast,
+      depth,
+      fillColor,
+      interpolate,
+      lineColor,
+      lineWidth,
+      name,
+      opacity,
+      ori,
+      pos,
+      size,
+      units,
+      win,
     });
 
     this._psychoJS.logger.debug("create a new Rect with name: ", name);
@@ -90,24 +90,22 @@ export class Rect extends ShapeStim {
   }
 
   /**
-   * Setter for the width attribute.
+   * Update the vertices.
    *
-   * @param {number} width - the rectangle width
-   * @param {boolean} [log= false] - whether of not to log
+   * @protected
    */
-  setWidth(width, log = false) {
-    this._psychoJS.logger.debug(
-      "set the width of Rect: ",
-      this.name,
-      "to: ",
-      width,
-    );
+  _updateVertices() {
+    this._psychoJS.logger.debug("update the vertices of Rect: ", this.name);
 
-    const hasChanged = this._setAttribute("width", width, log);
+    const halfWidth = this._width / 2.0;
+    const halfHeight = this._height / 2.0;
 
-    if (hasChanged) {
-      this._updateVertices();
-    }
+    this.setVertices([
+      [-halfWidth, -halfHeight],
+      [halfWidth, -halfHeight],
+      [halfWidth, halfHeight],
+      [-halfWidth, halfHeight],
+    ]);
   }
 
   /**
@@ -132,21 +130,23 @@ export class Rect extends ShapeStim {
   }
 
   /**
-   * Update the vertices.
+   * Setter for the width attribute.
    *
-   * @protected
+   * @param {number} width - the rectangle width
+   * @param {boolean} [log= false] - whether of not to log
    */
-  _updateVertices() {
-    this._psychoJS.logger.debug("update the vertices of Rect: ", this.name);
+  setWidth(width, log = false) {
+    this._psychoJS.logger.debug(
+      "set the width of Rect: ",
+      this.name,
+      "to: ",
+      width,
+    );
 
-    const halfWidth = this._width / 2.0;
-    const halfHeight = this._height / 2.0;
+    const hasChanged = this._setAttribute("width", width, log);
 
-    this.setVertices([
-      [-halfWidth, -halfHeight],
-      [halfWidth, -halfHeight],
-      [halfWidth, halfHeight],
-      [-halfWidth, halfHeight],
-    ]);
+    if (hasChanged) {
+      this._updateVertices();
+    }
   }
 }

@@ -7,6 +7,7 @@
  */
 
 import * as PIXI from "pixi.js-legacy";
+
 import { Color } from "../util/Color.js";
 import { ColorMixin } from "../util/ColorMixin.js";
 import * as util from "../util/Util.js";
@@ -51,53 +52,53 @@ export class TextBox extends util.mix(VisualStim).with(ColorMixin) {
    * @param {boolean} [options.fitToContent = false] - whether or not to resize itself automaitcally to fit to the text content
    */
   constructor({
-    name,
-    win,
-    pos,
-    anchor,
-    size,
-    units,
-    ori,
-    opacity,
-    depth,
-    text,
-    placeholder,
-    font,
-    letterHeight,
-    bold,
-    italic,
     alignment,
-    color,
-    contrast,
-    flipHoriz,
-    flipVert,
-    fillColor,
-    languageStyle,
+    anchor,
+    autoDraw,
+    autofocus,
+    autoLog,
+    bold,
     borderColor,
     borderWidth,
-    padding,
-    editable,
-    multiline,
-    autofocus,
-    clipMask,
-    autoDraw,
-    autoLog,
-    fitToContent,
     boxFn,
+    clipMask,
+    color,
+    contrast,
+    depth,
+    editable,
+    fillColor,
+    fitToContent,
+    flipHoriz,
+    flipVert,
+    font,
+    italic,
+    languageStyle,
+    letterHeight,
+    multiline,
+    name,
+    opacity,
+    ori,
+    padding,
+    placeholder,
+    pos,
+    size,
+    text,
+    units,
+    win,
   } = {}) {
     super({
-      name,
-      win,
-      pos,
       anchor,
-      size,
-      units,
-      ori,
-      opacity,
-      depth,
-      clipMask,
       autoDraw,
       autoLog,
+      clipMask,
+      depth,
+      name,
+      opacity,
+      ori,
+      pos,
+      size,
+      units,
+      win,
     });
 
     this._addAttribute("text", text, "");
@@ -190,205 +191,6 @@ export class TextBox extends util.mix(VisualStim).with(ColorMixin) {
   }
 
   /**
-   * Clears the current text value or sets it back to match the placeholder.
-   */
-  reset() {
-    this.setText(this.placeholder);
-  }
-
-  /**
-   * Clears the current text value.
-   */
-  clear() {
-    this.setText();
-  }
-
-  /**
-   * Setter for the alignment attribute.
-   *
-   * @param {boolean} alignment - alignment of the text
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  setAlignment(alignment = "center", log = false) {
-    this._setAttribute("alignment", alignment, log);
-    if (this._pixi !== undefined) {
-      let alignmentStyles = TextBox._alignmentToFlexboxMap.get(alignment);
-      if (!alignmentStyles) {
-        alignmentStyles = ["center", "center"];
-      }
-      this._pixi.setInputStyle("justifyContent", alignmentStyles[0]);
-      this._pixi.setInputStyle("textAlign", alignmentStyles[1]);
-    }
-  }
-
-  /**
-   * Setter for the languageStyle attribute.
-   *
-   * @param {String} languageStyle - text direction in textbox, accepts values ["LTR", "RTL", "Arabic"]
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  setLanguageStyle(languageStyle = "LTR", log = false) {
-    this._setAttribute("languageStyle", languageStyle, log);
-    let langDir = util.TEXT_DIRECTION[languageStyle];
-    if (langDir === undefined) {
-      langDir = util.TEXT_DIRECTION["LTR"];
-    }
-    if (this._pixi !== undefined) {
-      this._pixi.setInputStyle("direction", langDir);
-    }
-  }
-
-  /**
-   * For tweaking the underlying input value.
-   *
-   * @param {string} text
-   */
-  setText(text = "") {
-    if (typeof this._pixi !== "undefined") {
-      this._pixi.text = text;
-    }
-
-    this._text = text;
-  }
-
-  /**
-   * Set the font for textbox.
-   *
-   * @param {string} font - the font family
-   * @param {boolean} [log = false] - whether to log
-   */
-  setFont(font = "Arial", log = false) {
-    this._setAttribute("font", font, log);
-    if (this._pixi !== undefined) {
-      this._pixi.setInputStyle("fontFamily", font);
-    }
-  }
-
-  /**
-   * Set letterHeight (font size) for textbox.
-   *
-   * @param {string} [fontSize = <default value>] - the size of the font
-   * @param {boolean} [log = false] - whether to log
-   */
-  setLetterHeight(fontSize = this._getDefaultLetterHeight(), log = false) {
-    this._setAttribute("letterHeight", fontSize, log);
-    const fontSize_px = this._getLengthPix(fontSize);
-    if (this._pixi !== undefined) {
-      this._pixi.setInputStyle("fontSize", `${fontSize_px}px`);
-    }
-  }
-
-  /**
-   * For accessing the underlying input value.
-   *
-   * @return {string} - the current text value of the underlying input element.
-   */
-  getText() {
-    if (typeof this._pixi !== "undefined") {
-      return this._pixi.text;
-    }
-
-    return this._text;
-  }
-
-  /**
-   * Setter for the color attribute.
-   *
-   * @param {boolean} color - color of the text
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  setColor(color, log = false) {
-    this._setAttribute("color", color, log);
-    this._needUpdate = true;
-    this._needPixiUpdate = true;
-  }
-
-  /**
-   * Setter for the fillColor attribute.
-   *
-   * @param {boolean} fillColor - fill color of the text box
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  setFillColor(fillColor, log = false) {
-    this._setAttribute("fillColor", fillColor, log);
-    this._needUpdate = true;
-    this._needPixiUpdate = true;
-  }
-
-  /**
-   * Setter for the borderColor attribute.
-   *
-   * @param {Color} borderColor - border color of the text box
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  setBorderColor(borderColor, log = false) {
-    this._setAttribute("borderColor", borderColor, log);
-    this._needUpdate = true;
-    this._needPixiUpdate = true;
-  }
-
-  /**
-   * Setter for the fitToContent attribute.
-   *
-   * @param {boolean} fitToContent - whether or not to autoresize textbox to fit to text content
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  setFitToContent(fitToContent, log = false) {
-    this._setAttribute("fitToContent", fitToContent, log);
-    const width_px = Math.abs(Math.round(this._getLengthPix(this._size[0])));
-    const height_px = Math.abs(Math.round(this._getLengthPix(this._size[1])));
-    if (this._pixi !== undefined) {
-      this._pixi.setInputStyle(
-        "width",
-        fitToContent ? "auto" : `${width_px}px`,
-      );
-      this._pixi.setInputStyle(
-        "height",
-        fitToContent ? "auto" : `${height_px}px`,
-      );
-    }
-  }
-
-  /**
-   * Setter for the size attribute.
-   *
-   * @param {boolean} size - whether or not to wrap the text at the given width
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  setSize(size, log) {
-    // test with the size is undefined, or [undefined, undefined]:
-    let isSizeUndefined =
-      typeof size === "undefined" ||
-      size === null ||
-      (Array.isArray(size) &&
-        size.every((v) => typeof v === "undefined" || v === null));
-
-    this.fitToContent = isSizeUndefined;
-
-    if (isSizeUndefined) {
-      size = TextBox._defaultSizeMap.get(this._units);
-
-      if (typeof size === "undefined") {
-        throw {
-          origin: "TextBox.setSize",
-          context: "when setting the size of TextBox: " + this._name,
-          error: "no default size for unit: " + this._units,
-        };
-      }
-    }
-
-    const hasChanged = this._setAttribute("size", size, log);
-
-    if (hasChanged) {
-      this._needUpdate = true;
-      this._needPixiUpdate = true;
-
-      // immediately estimate the bounding box:
-      this._estimateBoundingBox();
-    }
-  }
-
-  /**
    * Add event listeners to text-box object. Method is called internally upon object construction.
    *
    * @protected
@@ -410,6 +212,29 @@ export class TextBox extends util.mix(VisualStim).with(ColorMixin) {
   }
 
   /**
+   * Estimate the bounding box.
+   *
+   * @override
+   * @protected
+   */
+  _estimateBoundingBox() {
+    // estimate the vertical size:
+    const boxHeight =
+      this._letterHeight + 2 * this._padding + 2 * this._borderWidth;
+
+    // take the alignment into account:
+    const anchor = this._anchorTextToNum(this._anchor);
+    this._boundingBox = new PIXI.Rectangle(
+      this._pos[0] - anchor[0] * this._size[0],
+      this._pos[1] - anchor[1] * boxHeight,
+      this._size[0],
+      boxHeight,
+    );
+
+    // TODO take the orientation into account
+  }
+
+  /**
    * Get the default letter height given the stimulus' units.
    *
    * @return {number} - the letter height corresponding to this stimulus' units.
@@ -420,9 +245,9 @@ export class TextBox extends util.mix(VisualStim).with(ColorMixin) {
 
     if (typeof height === "undefined") {
       throw {
-        origin: "TextBox._getDefaultLetterHeight",
         context: "when getting the default height of TextBox: " + this._name,
         error: "no default letter height for unit: " + this._units,
+        origin: "TextBox._getDefaultLetterHeight",
       };
     }
 
@@ -451,76 +276,53 @@ export class TextBox extends util.mix(VisualStim).with(ColorMixin) {
     } else {
       // note: box style properties eventually become PIXI.Graphics settings, so same syntax applies
       box = {
-        fill: new Color(this._fillColor).int,
         alpha:
           this._fillColor === undefined || this._fillColor === null ? 0 : 1,
+        fill: new Color(this._fillColor).int,
         rounded: 5,
         stroke: {
-          color: new Color(this._borderColor).int,
-          width: borderWidth_px,
           alpha:
             this._borderColor === undefined || this._borderColor === null
               ? 0
               : 1,
+          color: new Color(this._borderColor).int,
+          width: borderWidth_px,
         },
       };
     }
 
     return {
+      box,
       // input style properties eventually become CSS, so same syntax applies
       input: {
-        display: "flex",
-        flexDirection: "column",
-        fontFamily: this._font,
-        fontSize: `${letterHeight_px}px`,
         color:
           this._color === undefined || this._color === null
             ? "transparent"
             : new Color(this._color).hex,
-        fontWeight: this._bold ? "bold" : "normal",
-        fontStyle: this._italic ? "italic" : "normal",
         direction: util.TEXT_DIRECTION[this._languageStyle],
-        justifyContent: alignmentStyles[0],
-        textAlign: alignmentStyles[1],
-        padding: `${padding_px}px`,
-        multiline: this._multiline,
-        text: this._text,
+        display: "flex",
+        flexDirection: "column",
+        fontFamily: this._font,
+        fontSize: `${letterHeight_px}px`,
+        fontStyle: this._italic ? "italic" : "normal",
+        fontWeight: this._bold ? "bold" : "normal",
         height: this._fitToContent
           ? "auto"
           : this._multiline
             ? `${height_px}px`
             : undefined,
-        width: this._fitToContent ? "auto" : `${width_px}px`,
-        maxWidth: `${this.win.size[0]}px`,
+        justifyContent: alignmentStyles[0],
         maxHeight: `${this.win.size[1]}px`,
+        maxWidth: `${this.win.size[0]}px`,
+        multiline: this._multiline,
         overflow: "hidden",
+        padding: `${padding_px}px`,
         pointerEvents: "none",
+        text: this._text,
+        textAlign: alignmentStyles[1],
+        width: this._fitToContent ? "auto" : `${width_px}px`,
       },
-      box,
     };
-  }
-
-  /**
-   * Estimate the bounding box.
-   *
-   * @override
-   * @protected
-   */
-  _estimateBoundingBox() {
-    // estimate the vertical size:
-    const boxHeight =
-      this._letterHeight + 2 * this._padding + 2 * this._borderWidth;
-
-    // take the alignment into account:
-    const anchor = this._anchorTextToNum(this._anchor);
-    this._boundingBox = new PIXI.Rectangle(
-      this._pos[0] - anchor[0] * this._size[0],
-      this._pos[1] - anchor[1] * boxHeight,
-      this._size[0],
-      boxHeight,
-    );
-
-    // TODO take the orientation into account
   }
 
   /**
@@ -598,18 +400,217 @@ export class TextBox extends util.mix(VisualStim).with(ColorMixin) {
     // apply the clip mask:
     this._pixi.mask = this._clipMask;
   }
+
+  /**
+   * Clears the current text value.
+   */
+  clear() {
+    this.setText();
+  }
+
+  /**
+   * For accessing the underlying input value.
+   *
+   * @return {string} - the current text value of the underlying input element.
+   */
+  getText() {
+    if (typeof this._pixi !== "undefined") {
+      return this._pixi.text;
+    }
+
+    return this._text;
+  }
+
+  /**
+   * Clears the current text value or sets it back to match the placeholder.
+   */
+  reset() {
+    this.setText(this.placeholder);
+  }
+
+  /**
+   * Setter for the alignment attribute.
+   *
+   * @param {boolean} alignment - alignment of the text
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  setAlignment(alignment = "center", log = false) {
+    this._setAttribute("alignment", alignment, log);
+    if (this._pixi !== undefined) {
+      let alignmentStyles = TextBox._alignmentToFlexboxMap.get(alignment);
+      if (!alignmentStyles) {
+        alignmentStyles = ["center", "center"];
+      }
+      this._pixi.setInputStyle("justifyContent", alignmentStyles[0]);
+      this._pixi.setInputStyle("textAlign", alignmentStyles[1]);
+    }
+  }
+
+  /**
+   * Setter for the borderColor attribute.
+   *
+   * @param {Color} borderColor - border color of the text box
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  setBorderColor(borderColor, log = false) {
+    this._setAttribute("borderColor", borderColor, log);
+    this._needUpdate = true;
+    this._needPixiUpdate = true;
+  }
+
+  /**
+   * Setter for the color attribute.
+   *
+   * @param {boolean} color - color of the text
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  setColor(color, log = false) {
+    this._setAttribute("color", color, log);
+    this._needUpdate = true;
+    this._needPixiUpdate = true;
+  }
+
+  /**
+   * Setter for the fillColor attribute.
+   *
+   * @param {boolean} fillColor - fill color of the text box
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  setFillColor(fillColor, log = false) {
+    this._setAttribute("fillColor", fillColor, log);
+    this._needUpdate = true;
+    this._needPixiUpdate = true;
+  }
+
+  /**
+   * Setter for the fitToContent attribute.
+   *
+   * @param {boolean} fitToContent - whether or not to autoresize textbox to fit to text content
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  setFitToContent(fitToContent, log = false) {
+    this._setAttribute("fitToContent", fitToContent, log);
+    const width_px = Math.abs(Math.round(this._getLengthPix(this._size[0])));
+    const height_px = Math.abs(Math.round(this._getLengthPix(this._size[1])));
+    if (this._pixi !== undefined) {
+      this._pixi.setInputStyle(
+        "width",
+        fitToContent ? "auto" : `${width_px}px`,
+      );
+      this._pixi.setInputStyle(
+        "height",
+        fitToContent ? "auto" : `${height_px}px`,
+      );
+    }
+  }
+
+  /**
+   * Set the font for textbox.
+   *
+   * @param {string} font - the font family
+   * @param {boolean} [log = false] - whether to log
+   */
+  setFont(font = "Arial", log = false) {
+    this._setAttribute("font", font, log);
+    if (this._pixi !== undefined) {
+      this._pixi.setInputStyle("fontFamily", font);
+    }
+  }
+
+  /**
+   * Setter for the languageStyle attribute.
+   *
+   * @param {String} languageStyle - text direction in textbox, accepts values ["LTR", "RTL", "Arabic"]
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  setLanguageStyle(languageStyle = "LTR", log = false) {
+    this._setAttribute("languageStyle", languageStyle, log);
+    let langDir = util.TEXT_DIRECTION[languageStyle];
+    if (langDir === undefined) {
+      langDir = util.TEXT_DIRECTION["LTR"];
+    }
+    if (this._pixi !== undefined) {
+      this._pixi.setInputStyle("direction", langDir);
+    }
+  }
+
+  /**
+   * Set letterHeight (font size) for textbox.
+   *
+   * @param {string} [fontSize = <default value>] - the size of the font
+   * @param {boolean} [log = false] - whether to log
+   */
+  setLetterHeight(fontSize = this._getDefaultLetterHeight(), log = false) {
+    this._setAttribute("letterHeight", fontSize, log);
+    const fontSize_px = this._getLengthPix(fontSize);
+    if (this._pixi !== undefined) {
+      this._pixi.setInputStyle("fontSize", `${fontSize_px}px`);
+    }
+  }
+
+  /**
+   * Setter for the size attribute.
+   *
+   * @param {boolean} size - whether or not to wrap the text at the given width
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  setSize(size, log) {
+    // test with the size is undefined, or [undefined, undefined]:
+    let isSizeUndefined =
+      typeof size === "undefined" ||
+      size === null ||
+      (Array.isArray(size) &&
+        size.every((v) => typeof v === "undefined" || v === null));
+
+    this.fitToContent = isSizeUndefined;
+
+    if (isSizeUndefined) {
+      size = TextBox._defaultSizeMap.get(this._units);
+
+      if (typeof size === "undefined") {
+        throw {
+          context: "when setting the size of TextBox: " + this._name,
+          error: "no default size for unit: " + this._units,
+          origin: "TextBox.setSize",
+        };
+      }
+    }
+
+    const hasChanged = this._setAttribute("size", size, log);
+
+    if (hasChanged) {
+      this._needUpdate = true;
+      this._needPixiUpdate = true;
+
+      // immediately estimate the bounding box:
+      this._estimateBoundingBox();
+    }
+  }
+
+  /**
+   * For tweaking the underlying input value.
+   *
+   * @param {string} text
+   */
+  setText(text = "") {
+    if (typeof this._pixi !== "undefined") {
+      this._pixi.text = text;
+    }
+
+    this._text = text;
+  }
 }
 
 TextBox._alignmentToFlexboxMap = new Map([
-  ["center", ["center", "center"]],
-  ["top-center", ["flex-start", "center"]],
   ["bottom-center", ["flex-end", "center"]],
-  ["center-left", ["center", "left"]],
-  ["center-right", ["center", "right"]],
-  ["top-left", ["flex-start", "left"]],
-  ["top-right", ["flex-start", "right"]],
   ["bottom-left", ["flex-end", "left"]],
   ["bottom-right", ["flex-end", "right"]],
+  ["center", ["center", "center"]],
+  ["center-left", ["center", "left"]],
+  ["center-right", ["center", "right"]],
+  ["top-center", ["flex-start", "center"]],
+  ["top-left", ["flex-start", "left"]],
+  ["top-right", ["flex-start", "right"]],
 ]);
 
 /**
@@ -621,11 +622,11 @@ TextBox._alignmentToFlexboxMap = new Map([
 TextBox._defaultLetterHeightMap = new Map([
   ["cm", 1.0],
   ["deg", 1.0],
-  ["degs", 1.0],
-  ["degFlatPos", 1.0],
   ["degFlat", 1.0],
-  ["norm", 0.1],
+  ["degFlatPos", 1.0],
+  ["degs", 1.0],
   ["height", 0.2],
+  ["norm", 0.1],
   ["pix", 20],
   ["pixels", 20],
 ]);
@@ -639,11 +640,11 @@ TextBox._defaultLetterHeightMap = new Map([
 TextBox._defaultSizeMap = new Map([
   ["cm", [15.0, -1]],
   ["deg", [15.0, -1]],
-  ["degs", [15.0, -1]],
-  ["degFlatPos", [15.0, -1]],
   ["degFlat", [15.0, -1]],
-  ["norm", [1, -1]],
+  ["degFlatPos", [15.0, -1]],
+  ["degs", [15.0, -1]],
   ["height", [1, -1]],
+  ["norm", [1, -1]],
   ["pix", [500, -1]],
   ["pixels", [500, -1]],
 ]);

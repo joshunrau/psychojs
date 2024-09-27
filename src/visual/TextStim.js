@@ -7,6 +7,7 @@
  */
 
 import * as PIXI from "pixi.js-legacy";
+
 import { Color } from "../util/Color.js";
 import { ColorMixin } from "../util/ColorMixin.js";
 import { to_pixiPoint } from "../util/Pixi.js";
@@ -48,42 +49,42 @@ export class TextStim extends util.mix(VisualStim).with(ColorMixin) {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    name,
-    win,
-    text,
-    font,
-    pos,
-    anchor,
-    color,
-    opacity,
-    depth,
-    contrast,
-    units,
-    ori,
-    height,
-    bold,
-    italic,
     alignHoriz,
     alignVert,
-    wrapWidth,
-    flipHoriz,
-    flipVert,
-    clipMask,
+    anchor,
     autoDraw,
     autoLog,
+    bold,
+    clipMask,
+    color,
+    contrast,
+    depth,
+    flipHoriz,
+    flipVert,
+    font,
+    height,
+    italic,
+    name,
+    opacity,
+    ori,
+    pos,
+    text,
+    units,
+    win,
+    wrapWidth,
   } = {}) {
     super({
-      name,
-      win,
-      units,
-      ori,
-      opacity,
-      depth,
-      pos,
       anchor,
-      clipMask,
       autoDraw,
       autoLog,
+      clipMask,
+      depth,
+      name,
+      opacity,
+      ori,
+      pos,
+      units,
+      win,
     });
 
     // callback to deal with text metrics invalidation:
@@ -162,33 +163,66 @@ export class TextStim extends util.mix(VisualStim).with(ColorMixin) {
   }
 
   /**
-   * Get the metrics estimated for the text and style.
+   * Estimate the bounding box.
    *
-   * Note: getTextMetrics does not require the PIXI representation of the stimulus
-   * to be instantiated, unlike getSize().
+   * @override
+   * @protected
    */
-  getTextMetrics() {
-    if (typeof this._textMetrics === "undefined") {
-      this._textMetrics = PIXI.TextMetrics.measureText(
-        this._text,
-        this._getTextStyle(),
-      );
+  _estimateBoundingBox() {
+    // size of the text, irrespective of the orientation:
+    const textMetrics = this.getTextMetrics();
+    const textSize = util.to_unit(
+      [textMetrics.width, textMetrics.height],
+      "pix",
+      this._win,
+      this._units,
+    );
 
-      // since PIXI.TextMetrics does not give us the actual bounding box of the text
-      // (e.g. the height is really just the ascent + descent of the font), we use measureText:
-      const textMetricsCanvas = document.createElement("canvas");
-      document.body.appendChild(textMetricsCanvas);
+    // take the alignment into account:
+    const anchor = this._anchorTextToNum(this._anchor);
+    this._boundingBox = new PIXI.Rectangle(
+      this._pos[0] - anchor[0] * textSize[0],
+      this._pos[1] - textSize[1] + anchor[1] * textSize[1],
+      textSize[0],
+      textSize[1],
+    );
 
-      const ctx = textMetricsCanvas.getContext("2d");
-      ctx.font = this._getTextStyle().toFontString();
-      ctx.textBaseline = "alphabetic";
-      ctx.textAlign = "left";
-      this._textMetrics.boundingBox = ctx.measureText(this._text);
+    // TODO take the orientation into account
+  }
 
-      document.body.removeChild(textMetricsCanvas);
+  /**
+   * Convert the alignment attributes into an anchor.
+   *
+   * @protected
+   * @return {number[]} - the anchor
+   */
+  _getAnchor() {
+    let anchor = [];
+
+    switch (this._alignHoriz) {
+      case "left":
+        anchor.push(0);
+        break;
+      case "right":
+        anchor.push(1);
+        break;
+      default:
+      case "center":
+        anchor.push(0.5);
+    }
+    switch (this._alignVert) {
+      case "top":
+        anchor.push(0);
+        break;
+      case "bottom":
+        anchor.push(1);
+        break;
+      default:
+      case "center":
+        anchor.push(0.5);
     }
 
-    return this._textMetrics;
+    return anchor;
   }
 
   /**
@@ -201,9 +235,9 @@ export class TextStim extends util.mix(VisualStim).with(ColorMixin) {
 
     if (typeof height === "undefined") {
       throw {
-        origin: "TextStim._getDefaultLetterHeight",
         context: "when getting the default height of TextStim: " + this._name,
         error: "no default letter height for unit: " + this._units,
+        origin: "TextStim._getDefaultLetterHeight",
       };
     }
 
@@ -220,14 +254,90 @@ export class TextStim extends util.mix(VisualStim).with(ColorMixin) {
 
     if (typeof wrapWidth === "undefined") {
       throw {
-        origin: "TextStim._getDefaultWrapWidth",
         context:
           "when getting the default wrap width of TextStim: " + this._name,
         error: "no default wrap width for unit: " + this._units,
+        origin: "TextStim._getDefaultWrapWidth",
       };
     }
 
     return wrapWidth;
+  }
+
+  /**
+   * Get the PIXI Text Style applied to the PIXI.Text
+   *
+   * @protected
+   */
+  _getTextStyle() {
+    return new PIXI.TextStyle({
+      align: this._alignHoriz,
+      fill: this.getContrastedColor(new Color(this._color), this._contrast).hex,
+      fontFamily: this._font,
+      fontSize: Math.round(this._getLengthPix(this._height)),
+      fontStyle: this._italic ? "italic" : "normal",
+      fontWeight: this._bold ? "bold" : "normal",
+      wordWrap: typeof this._wrapWidth !== "undefined",
+      wordWrapWidth:
+        typeof this._wrapWidth !== "undefined"
+          ? this._getHorLengthPix(this._wrapWidth)
+          : 0,
+    });
+  }
+
+  /**
+   * Update the stimulus, if necessary.
+   *
+   * @protected
+   */
+  _updateIfNeeded() {
+    if (!this._needUpdate) {
+      return;
+    }
+    this._needUpdate = false;
+
+    // update the PIXI representation, if need be:
+    if (this._needPixiUpdate) {
+      this._needPixiUpdate = false;
+
+      if (typeof this._pixi !== "undefined") {
+        this._pixi.destroy(true);
+      }
+      this._pixi = new PIXI.Text(this._text, this._getTextStyle());
+      // TODO is updateText necessary?
+      // this._pixi.updateText();
+    }
+
+    const anchor = this._anchorTextToNum(this._anchor);
+    [this._pixi.anchor.x, this._pixi.anchor.y] = anchor;
+
+    this._pixi.scale.x = this._flipHoriz ? -1 : 1;
+    this._pixi.scale.y = this._flipVert ? 1 : -1;
+
+    this._pixi.rotation = (-this._ori * Math.PI) / 180;
+    this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
+
+    this._pixi.alpha = this._opacity;
+    this._pixi.zIndex = -this._depth;
+
+    // apply the clip mask:
+    this._pixi.mask = this._clipMask;
+
+    // update the size attribute:
+    this._size = util.to_unit(
+      [Math.abs(this._pixi.width), Math.abs(this._pixi.height)],
+      "pix",
+      this._win,
+      this._units,
+    );
+
+    // refine the estimate of the bounding box:
+    this._boundingBox = new PIXI.Rectangle(
+      this._pos[0] - anchor[0] * this._size[0],
+      this._pos[1] - this._size[1] + anchor[1] * this._size[1],
+      this._size[0],
+      this._size[1],
+    );
   }
 
   /**
@@ -304,52 +414,33 @@ export class TextStim extends util.mix(VisualStim).with(ColorMixin) {
   }
 
   /**
-   * Estimate the bounding box.
+   * Get the metrics estimated for the text and style.
    *
-   * @override
-   * @protected
+   * Note: getTextMetrics does not require the PIXI representation of the stimulus
+   * to be instantiated, unlike getSize().
    */
-  _estimateBoundingBox() {
-    // size of the text, irrespective of the orientation:
-    const textMetrics = this.getTextMetrics();
-    const textSize = util.to_unit(
-      [textMetrics.width, textMetrics.height],
-      "pix",
-      this._win,
-      this._units,
-    );
+  getTextMetrics() {
+    if (typeof this._textMetrics === "undefined") {
+      this._textMetrics = PIXI.TextMetrics.measureText(
+        this._text,
+        this._getTextStyle(),
+      );
 
-    // take the alignment into account:
-    const anchor = this._anchorTextToNum(this._anchor);
-    this._boundingBox = new PIXI.Rectangle(
-      this._pos[0] - anchor[0] * textSize[0],
-      this._pos[1] - textSize[1] + anchor[1] * textSize[1],
-      textSize[0],
-      textSize[1],
-    );
+      // since PIXI.TextMetrics does not give us the actual bounding box of the text
+      // (e.g. the height is really just the ascent + descent of the font), we use measureText:
+      const textMetricsCanvas = document.createElement("canvas");
+      document.body.appendChild(textMetricsCanvas);
 
-    // TODO take the orientation into account
-  }
+      const ctx = textMetricsCanvas.getContext("2d");
+      ctx.font = this._getTextStyle().toFontString();
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign = "left";
+      this._textMetrics.boundingBox = ctx.measureText(this._text);
 
-  /**
-   * Get the PIXI Text Style applied to the PIXI.Text
-   *
-   * @protected
-   */
-  _getTextStyle() {
-    return new PIXI.TextStyle({
-      fontFamily: this._font,
-      fontSize: Math.round(this._getLengthPix(this._height)),
-      fontWeight: this._bold ? "bold" : "normal",
-      fontStyle: this._italic ? "italic" : "normal",
-      fill: this.getContrastedColor(new Color(this._color), this._contrast).hex,
-      align: this._alignHoriz,
-      wordWrap: typeof this._wrapWidth !== "undefined",
-      wordWrapWidth:
-        typeof this._wrapWidth !== "undefined"
-          ? this._getHorLengthPix(this._wrapWidth)
-          : 0,
-    });
+      document.body.removeChild(textMetricsCanvas);
+    }
+
+    return this._textMetrics;
   }
 
   /**
@@ -368,96 +459,6 @@ export class TextStim extends util.mix(VisualStim).with(ColorMixin) {
       }
     }
   }
-
-  /**
-   * Update the stimulus, if necessary.
-   *
-   * @protected
-   */
-  _updateIfNeeded() {
-    if (!this._needUpdate) {
-      return;
-    }
-    this._needUpdate = false;
-
-    // update the PIXI representation, if need be:
-    if (this._needPixiUpdate) {
-      this._needPixiUpdate = false;
-
-      if (typeof this._pixi !== "undefined") {
-        this._pixi.destroy(true);
-      }
-      this._pixi = new PIXI.Text(this._text, this._getTextStyle());
-      // TODO is updateText necessary?
-      // this._pixi.updateText();
-    }
-
-    const anchor = this._anchorTextToNum(this._anchor);
-    [this._pixi.anchor.x, this._pixi.anchor.y] = anchor;
-
-    this._pixi.scale.x = this._flipHoriz ? -1 : 1;
-    this._pixi.scale.y = this._flipVert ? 1 : -1;
-
-    this._pixi.rotation = (-this._ori * Math.PI) / 180;
-    this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
-
-    this._pixi.alpha = this._opacity;
-    this._pixi.zIndex = -this._depth;
-
-    // apply the clip mask:
-    this._pixi.mask = this._clipMask;
-
-    // update the size attribute:
-    this._size = util.to_unit(
-      [Math.abs(this._pixi.width), Math.abs(this._pixi.height)],
-      "pix",
-      this._win,
-      this._units,
-    );
-
-    // refine the estimate of the bounding box:
-    this._boundingBox = new PIXI.Rectangle(
-      this._pos[0] - anchor[0] * this._size[0],
-      this._pos[1] - this._size[1] + anchor[1] * this._size[1],
-      this._size[0],
-      this._size[1],
-    );
-  }
-
-  /**
-   * Convert the alignment attributes into an anchor.
-   *
-   * @protected
-   * @return {number[]} - the anchor
-   */
-  _getAnchor() {
-    let anchor = [];
-
-    switch (this._alignHoriz) {
-      case "left":
-        anchor.push(0);
-        break;
-      case "right":
-        anchor.push(1);
-        break;
-      default:
-      case "center":
-        anchor.push(0.5);
-    }
-    switch (this._alignVert) {
-      case "top":
-        anchor.push(0);
-        break;
-      case "bottom":
-        anchor.push(1);
-        break;
-      default:
-      case "center":
-        anchor.push(0.5);
-    }
-
-    return anchor;
-  }
 }
 
 /**
@@ -469,11 +470,11 @@ export class TextStim extends util.mix(VisualStim).with(ColorMixin) {
 TextStim._defaultLetterHeightMap = new Map([
   ["cm", 1.0],
   ["deg", 1.0],
-  ["degs", 1.0],
-  ["degFlatPos", 1.0],
   ["degFlat", 1.0],
-  ["norm", 0.1],
+  ["degFlatPos", 1.0],
+  ["degs", 1.0],
   ["height", 0.2],
+  ["norm", 0.1],
   ["pix", 20],
   ["pixels", 20],
 ]);
@@ -487,11 +488,11 @@ TextStim._defaultLetterHeightMap = new Map([
 TextStim._defaultWrapWidthMap = new Map([
   ["cm", 15.0],
   ["deg", 15.0],
-  ["degs", 15.0],
-  ["degFlatPos", 15.0],
   ["degFlat", 15.0],
-  ["norm", 1],
+  ["degFlatPos", 15.0],
+  ["degs", 15.0],
   ["height", 1],
+  ["norm", 1],
   ["pix", 500],
   ["pixels", 500],
 ]);

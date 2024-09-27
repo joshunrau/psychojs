@@ -6,13 +6,14 @@
  * @license Distributed under the terms of the MIT License
  */
 
-import { PsychoJS } from "../core/PsychoJS.js";
-import * as util from "../util/Util.js";
-import { to_pixiPoint } from "../util/Pixi.js";
-import { Color } from "../util/Color.js";
-import { Camera } from "../hardware/Camera.js";
-import { VisualStim } from "./VisualStim.js";
 import * as PIXI from "pixi.js-legacy";
+
+import { PsychoJS } from "../core/PsychoJS.js";
+import { Camera } from "../hardware/Camera.js";
+import { Color } from "../util/Color.js";
+import { to_pixiPoint } from "../util/Pixi.js";
+import * as util from "../util/Util.js";
+import { VisualStim } from "./VisualStim.js";
 
 /**
  * <p>This manager handles the detecting of faces in video streams. FaceDetector relies on the
@@ -40,20 +41,20 @@ export class FaceDetector extends VisualStim {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    name,
-    win,
-    input,
-    modelDir,
-    faceApiUrl,
-    units,
-    ori,
-    opacity,
-    pos,
-    size,
     autoDraw,
     autoLog,
+    faceApiUrl,
+    input,
+    modelDir,
+    name,
+    opacity,
+    ori,
+    pos,
+    size,
+    units,
+    win,
   } = {}) {
-    super({ name, win, units, ori, opacity, pos, size, autoDraw, autoLog });
+    super({ autoDraw, autoLog, name, opacity, ori, pos, size, units, win });
 
     // TODO deal with onChange (see MovieStim and Camera)
     this._addAttribute("input", input, undefined);
@@ -70,6 +71,95 @@ export class FaceDetector extends VisualStim {
         `Created ${this.name} = ${this.toString()}`,
       );
     }
+  }
+
+  /**
+   * Estimate the bounding box.
+   *
+   * @override
+   * @protected
+   */
+  _estimateBoundingBox() {
+    // TODO
+  }
+
+  /**
+   * Init the Face-API library.
+   *
+   * @protected
+   */
+  async _initFaceApi() {
+    /*
+		// load the library:
+		await this._psychoJS.serverManager.prepareResources([
+			{
+				"name": "face-api.js",
+				"path": this.faceApiUrl,
+				"download": true
+			}
+		]);
+*/
+
+    // load the models:
+    this._modelsLoaded = false;
+    await faceapi.nets.tinyFaceDetector.loadFromUri(this._modelDir);
+    await faceapi.nets.faceLandmark68Net.loadFromUri(this._modelDir);
+    await faceapi.nets.faceRecognitionNet.loadFromUri(this._modelDir);
+    await faceapi.nets.faceExpressionNet.loadFromUri(this._modelDir);
+    this._modelsLoaded = true;
+  }
+
+  /**
+   * Update the visual representation of the detected faces, if necessary.
+   *
+   * @protected
+   */
+  _updateIfNeeded() {
+    if (!this._needUpdate) {
+      return;
+    }
+    this._needUpdate = false;
+
+    if (this._needPixiUpdate) {
+      this._needPixiUpdate = false;
+
+      if (typeof this._pixi !== "undefined") {
+        this._pixi.destroy(true);
+      }
+      this._pixi = new PIXI.Container();
+      this._pixi.interactive = true;
+
+      this._body = new PIXI.Graphics();
+      this._body.interactive = true;
+      this._pixi.addChild(this._body);
+
+      const size_px = util.to_px(this.size, this.units, this.win);
+      if (typeof this._detections !== "undefined") {
+        for (const detection of this._detections) {
+          const landmarks = detection.landmarks;
+          const imageWidth = detection.alignedRect.imageWidth;
+          const imageHeight = detection.alignedRect.imageHeight;
+
+          for (const position of landmarks.positions) {
+            this._body.beginFill(new Color("red").int, this._opacity);
+            this._body.drawCircle(
+              (position._x / imageWidth) * size_px[0] - size_px[0] / 2,
+              (position._y / imageHeight) * size_px[1] - size_px[1] / 2,
+              2,
+            );
+            this._body.endFill();
+          }
+        }
+      }
+    }
+
+    this._pixi.scale.x = 1;
+    this._pixi.scale.y = -1;
+
+    this._pixi.rotation = (-this.ori * Math.PI) / 180;
+    this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
+
+    this._pixi.alpha = this._opacity;
   }
 
   /**
@@ -90,8 +180,8 @@ export class FaceDetector extends VisualStim {
    */
   setInput(input, log = false) {
     const response = {
-      origin: "FaceDetector.setInput",
       context: "when setting the video of FaceDetector: " + this._name,
+      origin: "FaceDetector.setInput",
     };
 
     try {
@@ -187,94 +277,5 @@ export class FaceDetector extends VisualStim {
       clearInterval(this._detectionId);
       this._detectionId = undefined;
     }
-  }
-
-  /**
-   * Init the Face-API library.
-   *
-   * @protected
-   */
-  async _initFaceApi() {
-    /*
-		// load the library:
-		await this._psychoJS.serverManager.prepareResources([
-			{
-				"name": "face-api.js",
-				"path": this.faceApiUrl,
-				"download": true
-			}
-		]);
-*/
-
-    // load the models:
-    this._modelsLoaded = false;
-    await faceapi.nets.tinyFaceDetector.loadFromUri(this._modelDir);
-    await faceapi.nets.faceLandmark68Net.loadFromUri(this._modelDir);
-    await faceapi.nets.faceRecognitionNet.loadFromUri(this._modelDir);
-    await faceapi.nets.faceExpressionNet.loadFromUri(this._modelDir);
-    this._modelsLoaded = true;
-  }
-
-  /**
-   * Update the visual representation of the detected faces, if necessary.
-   *
-   * @protected
-   */
-  _updateIfNeeded() {
-    if (!this._needUpdate) {
-      return;
-    }
-    this._needUpdate = false;
-
-    if (this._needPixiUpdate) {
-      this._needPixiUpdate = false;
-
-      if (typeof this._pixi !== "undefined") {
-        this._pixi.destroy(true);
-      }
-      this._pixi = new PIXI.Container();
-      this._pixi.interactive = true;
-
-      this._body = new PIXI.Graphics();
-      this._body.interactive = true;
-      this._pixi.addChild(this._body);
-
-      const size_px = util.to_px(this.size, this.units, this.win);
-      if (typeof this._detections !== "undefined") {
-        for (const detection of this._detections) {
-          const landmarks = detection.landmarks;
-          const imageWidth = detection.alignedRect.imageWidth;
-          const imageHeight = detection.alignedRect.imageHeight;
-
-          for (const position of landmarks.positions) {
-            this._body.beginFill(new Color("red").int, this._opacity);
-            this._body.drawCircle(
-              (position._x / imageWidth) * size_px[0] - size_px[0] / 2,
-              (position._y / imageHeight) * size_px[1] - size_px[1] / 2,
-              2,
-            );
-            this._body.endFill();
-          }
-        }
-      }
-    }
-
-    this._pixi.scale.x = 1;
-    this._pixi.scale.y = -1;
-
-    this._pixi.rotation = (-this.ori * Math.PI) / 180;
-    this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
-
-    this._pixi.alpha = this._opacity;
-  }
-
-  /**
-   * Estimate the bounding box.
-   *
-   * @override
-   * @protected
-   */
-  _estimateBoundingBox() {
-    // TODO
   }
 }

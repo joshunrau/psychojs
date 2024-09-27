@@ -45,15 +45,6 @@ class Particle {
     this.height = cfg.particleHeight || DEFAULT_PARTICLE_HEIGHT;
   }
 
-  set width(w) {
-    this._width = w;
-    this.sprite.width = w;
-  }
-
-  get width() {
-    return this._width;
-  }
-
   set height(h) {
     this._height = h;
     this.sprite.height = h;
@@ -61,6 +52,15 @@ class Particle {
 
   get height() {
     return this._height;
+  }
+
+  set width(w) {
+    this._width = w;
+    this.sprite.width = w;
+  }
+
+  get width() {
+    return this._width;
   }
 
   update(dt) {
@@ -116,6 +116,19 @@ export class ParticleEmitter {
     for (i = 0; i < this._particlePool.length; i++) {
       this._particlePool[i] = new Particle(cfg);
     }
+  }
+
+  _getResultingExternalForce() {
+    let externalForce = [0, 0];
+    if (this._cfg.externalForces instanceof Array) {
+      let i;
+      for (i = 0; i < this._cfg.externalForces.length; i++) {
+        externalForce[0] += this._cfg.externalForces[i][0];
+        externalForce[1] += this._cfg.externalForces[i][1];
+      }
+    }
+
+    return externalForce;
   }
 
   _setupParticle(p) {
@@ -198,23 +211,6 @@ export class ParticleEmitter {
     }
   }
 
-  _getResultingExternalForce() {
-    let externalForce = [0, 0];
-    if (this._cfg.externalForces instanceof Array) {
-      let i;
-      for (i = 0; i < this._cfg.externalForces.length; i++) {
-        externalForce[0] += this._cfg.externalForces[i][0];
-        externalForce[1] += this._cfg.externalForces[i][1];
-      }
-    }
-
-    return externalForce;
-  }
-
-  setParentObject(po) {
-    this._parentObj = po;
-  }
-
   /**
    * @desc: Adds external force which acts on a particle
    * @param: f - Array with two elements, first is x component, second is y component.
@@ -235,6 +231,10 @@ export class ParticleEmitter {
     if (this._cfg.externalForces[idx] !== undefined) {
       this._cfg.externalForces.splice(idx, 1);
     }
+  }
+
+  setParentObject(po) {
+    this._parentObj = po;
   }
 
   update(dt) {

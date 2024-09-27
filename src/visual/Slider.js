@@ -7,6 +7,7 @@
  */
 
 import * as PIXI from "pixi.js-legacy";
+
 import { PsychoJS } from "../core/PsychoJS.js";
 import { WindowMixin } from "../core/WindowMixin.js";
 import { Clock } from "../util/Clock.js";
@@ -67,47 +68,47 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
    * 	which must be updated when this Slider is updated, e.g. a Form.
    */
   constructor({
-    name,
-    win,
-    pos,
-    size,
-    ori,
-    units,
-    color,
-    markerColor,
-    lineColor,
-    contrast,
-    opacity,
-    depth,
-    style,
-    ticks,
-    labels,
-    startValue,
-    granularity,
-    flip,
-    readOnly,
-    font,
-    bold,
-    italic,
-    fontSize,
-    compact,
-    clipMask,
     autoDraw,
     autoLog,
+    bold,
+    clipMask,
+    color,
+    compact,
+    contrast,
     dependentStims,
+    depth,
+    flip,
+    font,
+    fontSize,
+    granularity,
+    italic,
+    labels,
+    lineColor,
+    markerColor,
+    name,
+    opacity,
+    ori,
+    pos,
+    readOnly,
+    size,
+    startValue,
+    style,
+    ticks,
+    units,
+    win,
   } = {}) {
     super({
-      name,
-      win,
-      units,
-      ori,
-      opacity,
-      depth,
-      pos,
-      size,
-      clipMask,
       autoDraw,
       autoLog,
+      clipMask,
+      depth,
+      name,
+      opacity,
+      ori,
+      pos,
+      size,
+      units,
+      win,
     });
 
     this._needMarkerUpdate = false;
@@ -228,185 +229,13 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
     this._handlePointerMoveBinded = this._handlePointerMove.bind(this);
   }
 
-  /**
-   * Force a refresh of the stimulus.
-   */
-  refresh() {
-    super.refresh();
-
-    this._needMarkerUpdate = true;
-  }
-
-  /**
-   * Reset the slider.
-   */
-  reset() {
-    this.psychoJS.logger.debug("reset Slider: ", this._name);
-
-    this._markerPos = undefined;
-    this._history = [];
-    this._rating = undefined;
-    this._responseClock.reset();
-    this.status = PsychoJS.Status.NOT_STARTED;
-
-    this._needPixiUpdate = true;
-    this._needUpdate = true;
-
-    // the marker should be invisible when markerPos is undefined:
-    if (typeof this._marker !== "undefined") {
-      this._marker.alpha = 0;
-    }
-  }
-
-  /**
-   * Query whether or not the marker is currently being dragged.
-   *
-   * @returns {boolean} whether or not the marker is being dragged
-   */
-  isMarkerDragging() {
-    return this._markerDragging;
-  }
-
-  /**
-   * Get the current value of the rating.
-   *
-   * @returns {number | undefined} the rating or undefined if there is none
-   */
-  getRating() {
-    const historyLength = this._history.length;
-    if (historyLength > 0) {
-      return this._history[historyLength - 1].rating;
-    } else {
-      return undefined;
-    }
-  }
-
-  /**
-   * Get the response time of the most recent change to the rating.
-   *
-   * @returns {number | undefined} the response time (in second) or undefined if there is none
-   */
-  getRT() {
-    const historyLength = this._history.length;
-    if (historyLength > 0) {
-      return this._history[historyLength - 1].responseTime;
-    } else {
-      return undefined;
-    }
-  }
-
-  /**
-   * Setter for the readOnly attribute.
-   *
-   * Read-only sliders are half-opaque and do not provide responses.
-   *
-   * @param {boolean} [readOnly= true] - whether or not the slider is read-only
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setReadOnly(readOnly = true, log = false) {
-    const hasChanged = this._setAttribute("readOnly", readOnly, log);
-
-    if (hasChanged) {
-      // halve the opacity:
-      if (readOnly) {
-        this._opacity /= 2.0;
-      } else {
-        this._opacity *= 2.0;
-      }
-
-      this._needUpdate = true;
-    }
-  }
-
-  /**
-   * Setter for the markerPos attribute.
-   *
-   * <p>Setting markerPos changes the visible position of the marker to the specified rating
-   * but does not change the actual rating returned by the slider.</p>
-   *
-   * @param {number} displayedRating - the displayed rating
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setMarkerPos(displayedRating, log = false) {
-    const previousMarkerPos = this._markerPos;
-    this._markerPos = this._granularise(displayedRating);
-
-    // if the displayed rating has changed, we need to update the pixi representation:
-    if (previousMarkerPos !== this._markerPos) {
-      this._needMarkerUpdate = true;
-      this._needUpdate = true;
-    }
-  }
-
-  /**
-   * Setter for the rating attribute.
-   *
-   * Setting the rating does not change the visible position of the marker.
-   *
-   * @param {number} rating - the rating
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setRating(rating, log = false) {
-    rating = this._granularise(rating);
-    this._markerPos = rating;
-    if (this._isCategorical) {
-      rating = this._labels[Math.round(rating)];
-    }
-
-    this._setAttribute("rating", rating, log);
-  }
-
-  /**
-   * Setter for the orientation attribute.
-   *
-   * @param {number} ori - the orientation in degree with 0 as the vertical position, positive values rotate clockwise.
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setOri(ori = 0, log = false) {
-    const oriChanged = this._setAttribute("ori", ori, log);
-    if (oriChanged) {
-      this._pixi.rotation = (-this._ori * Math.PI) / 180;
-      let i;
-      for (i = 0; i < this._pixiLabels.length; ++i) {
-        this._pixiLabels[i].rotation =
-          (-(this._ori + this._labelOri) * Math.PI) / 180;
-      }
-    }
-  }
-
-  /**
-   * Setter for the anchor attribute.
-   *
-   * @param {string} anchor - anchor of the stim
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  setAnchor(anchor = "center", log = false) {
-    this._setAttribute("anchor", anchor, log);
-    if (this._pixi !== undefined) {
-      // container has origin at [0, 0], subtracting 0.5 from anchorNum vals to get a desired effect.
-      const anchorNum = this._anchorTextToNum(this._anchor);
-      this._pixi.pivot.x =
-        (anchorNum[0] - 0.5) * this._pixi.scale.x * this._pixi.width;
-      this._pixi.pivot.y =
-        (anchorNum[1] - 0.5) * this._pixi.scale.y * this._pixi.height;
-    }
-  }
-
   /** Let `borderColor` alias `lineColor` to parallel PsychoPy */
   set borderColor(color) {
     this.lineColor = color;
   }
 
-  setBorderColor(color) {
-    this.setLineColor(color);
-  }
-
   get borderColor() {
     return this.lineColor;
-  }
-
-  getBorderColor() {
-    return this.getLineColor();
   }
 
   /** Let `fillColor` alias `markerColor` to parallel PsychoPy */
@@ -414,16 +243,19 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
     this.markerColor = color;
   }
 
-  setFillColor(color) {
-    this.setMarkerColor(color);
-  }
-
   get fillColor() {
     return this.markerColor;
   }
 
-  getFillColor() {
-    return this.getMarkerColor();
+  /**
+   * Add event listeners.
+   *
+   * @protected
+   */
+  _addEventListeners() {
+    this._pixi.on("pointerdown", this._handlePointerDownBinded);
+    this._win._rootContainer.on("pointermove", this._handlePointerMoveBinded);
+    this._win._rootContainer.on("pointerup", this._handlePointerUpBinded);
   }
 
   /**
@@ -569,152 +401,6 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
   }
 
   /**
-   * Sanitize the slider attributes: check for attribute conflicts, missing values, etc.
-   *
-   * @protected
-   */
-  _sanitizeAttributes() {
-    this._isSliderStyle = false;
-    this._frozenMarker = false;
-
-    // convert potential string styles into Symbols:
-    this._style.forEach((style, index) => {
-      if (typeof style === "string") {
-        this._style[index] = Symbol.for(style.toUpperCase());
-      }
-    });
-
-    // TODO: non-empty ticks, RADIO is also categorical, etc.
-
-    // SLIDER style: two ticks, first one is zero, second one is > 1
-    if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
-      this._isSliderStyle = true;
-
-      // more than 2 ticks: cut to two
-      if (this._ticks.length > 2) {
-        this.psychoJS.logger.warn(
-          `Slider "${this._name}" has style: SLIDER and more than two ticks. We cut the ticks to 2.`,
-        );
-        this._ticks = this._ticks.slice(0, 2);
-      }
-
-      // less than 2 ticks: error
-      if (this._ticks.length < 2) {
-        throw {
-          origin: "Slider._sanitizeAttributes",
-          context: "when sanitizing the attributes of Slider: " + this._name,
-          error: "less than 2 ticks were given for a slider of type: SLIDER",
-        };
-      }
-
-      // first tick different from zero: change it to zero
-      if (this._ticks[0] !== 0) {
-        this.psychoJS.logger.warn(
-          `Slider "${this._name}" has style: SLIDER but the first tick is not 0. We changed it to 0.`,
-        );
-        this._ticks[0] = 0;
-      }
-
-      // second tick smaller than 1: change it to 1
-      if (this._ticks[1] < 1) {
-        this.psychoJS.logger.warn(
-          `Slider "${this._name}" has style: SLIDER but the second tick is less than 1. We changed it to 1.`,
-        );
-        this._ticks[1] = 1;
-      }
-
-      // second tick is 1: the marker is frozen
-      if (this._ticks[1] === 1) {
-        this._frozenMarker = true;
-      }
-    }
-
-    // deal with categorical sliders:
-    this._isCategorical = this._ticks.length === 0;
-    if (this._isCategorical) {
-      this._ticks = [...Array(this._labels.length)].map((_, i) => i);
-      this._granularity = 1.0;
-    }
-  }
-
-  /**
-   * Set the current rating.
-   *
-   * Setting the rating does also change the visible position of the marker.
-   *
-   * @param {number} rating - the rating
-   * @param {number} [responseTime] - the reaction time
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  recordRating(rating, responseTime = undefined, log = false) {
-    // get response time:
-    if (typeof responseTime === "undefined") {
-      responseTime = this._responseClock.getTime();
-    }
-
-    // set rating:
-    // rating = this._granularise(rating);
-    // this._setAttribute('rating', rating, log);
-    this.setRating(rating, log);
-
-    // add rating and response time to history:
-    this._history.push({ rating: this._rating, responseTime });
-    this.psychoJS.logger.debug(
-      "record a new rating: ",
-      this._rating,
-      "with response time: ",
-      responseTime,
-      "for Slider: ",
-      this._name,
-    );
-
-    // update slider:
-    this._needMarkerUpdate = true;
-    this._needUpdate = true;
-  }
-
-  /**
-   * Release the PIXI representation, if there is one.
-   *
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  release(log = false) {
-    this._removeEventListeners();
-    super.release(log);
-  }
-
-  /**
-   * Update the stimulus, if necessary.
-   *
-   * @protected
-   */
-  _updateIfNeeded() {
-    if (!this._needUpdate) {
-      return;
-    }
-    this._needUpdate = false;
-
-    this._estimateBoundingBox();
-    this._setupSlider();
-    this._updateMarker();
-
-    this._pixi.scale.x = 1;
-    this._pixi.scale.y = -1;
-
-    this._pixi.rotation = (-this._ori * Math.PI) / 180;
-    this._pixi.position = this._getPosition_px();
-
-    this._pixi.alpha = this._opacity;
-    this._pixi.zIndex = -this._depth;
-    this.anchor = this._anchor;
-
-    // make sure that the dependent Stimuli are also updated:
-    for (const dependentStim of this._dependentStims) {
-      dependentStim.draw();
-    }
-  }
-
-  /**
    * Estimate the position of the slider, taking the compactness into account.
    *
    * @return {number[]} - the position of the slider, in pixels
@@ -740,31 +426,44 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
   }
 
   /**
-   * Update the position of the marker if necessary.
+   * Get the PIXI Text Style applied to the PIXI.Text labels.
    *
-   * @name module:visual.Slider#_updateMarker
    * @protected
    */
-  _updateMarker() {
-    if (!this._needMarkerUpdate) {
-      return;
-    }
-    this._needMarkerUpdate = false;
+  _getTextStyle() {
+    this._fontSize_px = this._getLengthPix(this._fontSize);
 
-    if (typeof this._marker !== "undefined") {
-      if (typeof this._markerPos !== "undefined") {
-        const visibleMarkerPos = this._ratingToPos([this._markerPos]);
-        this._marker.position = to_pixiPoint(
-          visibleMarkerPos[0],
-          this.units,
-          this.win,
-          true,
-        );
-        this._marker.alpha = 1;
-      } else {
-        this._marker.alpha = 0;
-      }
+    return new PIXI.TextStyle({
+      align: "center",
+      fill: this.getContrastedColor(this._labelColor, this._contrast).hex,
+      fontFamily: this._font,
+      fontSize: Math.round(this._fontSize_px),
+      fontStyle: this._italic ? "italic" : "normal",
+      fontWeight: this._bold ? "bold" : "normal",
+    });
+  }
+
+  /**
+   * Calculate the rating once granularity has been taken into account.
+   *
+   * @protected
+   * @param {number} rating - the input rating
+   * @returns {number} the new rating with granularity applied
+   */
+  _granularise(rating) {
+    if (typeof rating === "undefined") {
+      return undefined;
     }
+
+    if (this._granularity > 0) {
+      rating = Math.round(rating / this._granularity) * this._granularity;
+    }
+    rating = Math.min(
+      Math.max(this._ticks[0], rating),
+      this._ticks[this._ticks.length - 1],
+    );
+
+    return rating;
   }
 
   /**
@@ -833,14 +532,108 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
   }
 
   /**
-   * Add event listeners.
+   * Determine whether the slider is horizontal.
+   *
+   * The slider is horizontal is its x-axis size is larger than its y-axis size.
    *
    * @protected
+   * @returns {boolean} whether or not the slider is horizontal
    */
-  _addEventListeners() {
-    this._pixi.on("pointerdown", this._handlePointerDownBinded);
-    this._win._rootContainer.on("pointermove", this._handlePointerMoveBinded);
-    this._win._rootContainer.on("pointerup", this._handlePointerUpBinded);
+  _isHorizontal() {
+    return this._size[0] > this._size[1];
+  }
+
+  /**
+   * Convert a [x,y] position, in pixel units, relative to the slider, into a rating.
+   *
+   * @protected
+   * @param {number[]} pos_px - the [x,y] position, in pixel units, relative to the slider.
+   * @returns {number} the corresponding rating.
+   */
+  _posToRating(pos_px) {
+    const range = this._ticks[this._ticks.length - 1] - this._ticks[0];
+    const size_px = util.to_px(this._size, this._units, this._win);
+    const markerSize_px = util.to_px(this._markerSize, this._units, this._win);
+
+    if (this._isHorizontal()) {
+      if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
+        return (
+          (pos_px[0] / (size_px[0] - markerSize_px[0]) + 0.5) * range +
+          this._ticks[0]
+        );
+      } else {
+        return (pos_px[0] / size_px[0] + 0.5) * range + this._ticks[0];
+      }
+    } else {
+      if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
+        if (size_px[1] === markerSize_px[1]) {
+        } else {
+          return (
+            (pos_px[1] / (size_px[1] - markerSize_px[1]) + 0.5) * range +
+            this._ticks[0]
+          );
+        }
+      } else {
+        return (1.0 - (pos_px[1] / size_px[1] + 0.5)) * range + this._ticks[0];
+      }
+    }
+  }
+
+  /**
+   * Convert an array of ratings into an array of [x,y] positions (in Slider units, with 0 at the center of the Slider)
+   *
+   * @protected
+   * @param {number[]} ratings - the array of ratings
+   * @returns {Array.<Array.<number>>} the positions corresponding to the ratings (in Slider units,
+   * with 0 at the center of the Slider)
+   */
+  _ratingToPos(ratings) {
+    const range = this._ticks[this._ticks.length - 1] - this._ticks[0];
+    if (this._isHorizontal()) {
+      // in compact mode the circular markers of RADIO sliders must fit within the width:
+      if (this._compact && this._style.indexOf(Slider.Style.RADIO) > -1) {
+        return ratings.map((v) => [
+          ((v - this._ticks[0]) / range) *
+            (this._size[0] - this._tickSize[1] * 2) -
+            this._size[0] / 2 +
+            this._tickSize[1],
+          0,
+        ]);
+      } else if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
+        return ratings.map((v) => [
+          ((v - this._ticks[0]) / range - 0.5) *
+            (this._size[0] - this._markerSize[0]),
+          0,
+        ]);
+      } else {
+        return ratings.map((v) => [
+          ((v - this._ticks[0]) / range - 0.5) * this._size[0],
+          0,
+        ]);
+      }
+    } else {
+      // in compact mode the circular markers of RADIO sliders must fit within the height:
+      if (this._compact && this._style.indexOf(Slider.Style.RADIO) > -1) {
+        return ratings.map((v) => [
+          0,
+          ((v - this._ticks[0]) / range) *
+            (this._size[1] - this._tickSize[0] * 2) -
+            this._size[1] / 2 +
+            this._tickSize[0],
+        ]);
+      } else if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
+        return ratings.map((v) => [
+          0,
+          ((v - this._ticks[0]) / range - 0.5) *
+            (this._size[1] - this._markerSize[1]),
+        ]);
+      } else {
+        return ratings.map((v) => [
+          0,
+          (1.0 - (v - this._ticks[0]) / range - 0.5) * this._size[1],
+        ]);
+      }
+    }
   }
 
   /**
@@ -857,82 +650,72 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
   }
 
   /**
-   * Setup the PIXI components of the slider (bar, ticks, labels, marker, etc.).
+   * Sanitize the slider attributes: check for attribute conflicts, missing values, etc.
    *
    * @protected
    */
-  _setupSlider() {
-    if (!this._needPixiUpdate) {
-      return;
-    }
-    this._needPixiUpdate = false;
+  _sanitizeAttributes() {
+    this._isSliderStyle = false;
+    this._frozenMarker = false;
 
-    this._setupStyle();
+    // convert potential string styles into Symbols:
+    this._style.forEach((style, index) => {
+      if (typeof style === "string") {
+        this._style[index] = Symbol.for(style.toUpperCase());
+      }
+    });
 
-    // calculate various values in pixel units:
-    this._tickSize_px = util.to_px(this._tickSize, this._units, this._win);
-    this._fontSize_px = this._getLengthPix(this._fontSize);
-    this._barSize_px = util
-      .to_px(this._barSize, this._units, this._win, true)
-      .map((v) => Math.max(1, v));
-    this._markerSize_px = util.to_px(
-      this._markerSize,
-      this._units,
-      this._win,
-      true,
-    );
-    const tickPositions = this._ratingToPos(this._ticks);
-    this._tickPositions_px = tickPositions.map((p) =>
-      util.to_px(p, this._units, this._win),
-    );
+    // TODO: non-empty ticks, RADIO is also categorical, etc.
 
-    if (typeof this._pixi !== "undefined") {
-      this._removeEventListeners();
-      this._pixi.destroy(true);
-    }
-    this._pixi = new PIXI.Container();
-    this._pixi.interactive = true;
-    // apply the clip mask:
-    this._pixi.mask = this._clipMask;
+    // SLIDER style: two ticks, first one is zero, second one is > 1
+    if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
+      this._isSliderStyle = true;
 
-    this._body = new PIXI.Graphics();
-    this._body.interactive = true;
-    this._pixi.addChild(this._body);
+      // more than 2 ticks: cut to two
+      if (this._ticks.length > 2) {
+        this.psychoJS.logger.warn(
+          `Slider "${this._name}" has style: SLIDER and more than two ticks. We cut the ticks to 2.`,
+        );
+        this._ticks = this._ticks.slice(0, 2);
+      }
 
-    // ensure that pointer events will be captured along the slider body, even outside of
-    // marker and labels:
-    if (this._tickType === Slider.Shape.DISC) {
-      const maxTickSize_px = Math.max(
-        this._tickSize_px[0],
-        this._tickSize_px[1],
-      );
-      this._body.hitArea = new PIXI.Rectangle(
-        -(this._barSize_px[0] + maxTickSize_px) * 0.5,
-        -(this._barSize_px[1] + maxTickSize_px) * 0.5,
-        this._barSize_px[0] + maxTickSize_px,
-        this._barSize_px[1] + maxTickSize_px,
-      );
-    } else {
-      this._body.hitArea = new PIXI.Rectangle(
-        -this._barSize_px[0] / 2 - this._tickSize_px[0] / 2,
-        -this._barSize_px[1] / 2 - this._tickSize_px[1] / 2,
-        this._barSize_px[0] + this._tickSize_px[0],
-        this._barSize_px[1] + this._tickSize_px[1],
-      );
+      // less than 2 ticks: error
+      if (this._ticks.length < 2) {
+        throw {
+          context: "when sanitizing the attributes of Slider: " + this._name,
+          error: "less than 2 ticks were given for a slider of type: SLIDER",
+          origin: "Slider._sanitizeAttributes",
+        };
+      }
+
+      // first tick different from zero: change it to zero
+      if (this._ticks[0] !== 0) {
+        this.psychoJS.logger.warn(
+          `Slider "${this._name}" has style: SLIDER but the first tick is not 0. We changed it to 0.`,
+        );
+        this._ticks[0] = 0;
+      }
+
+      // second tick smaller than 1: change it to 1
+      if (this._ticks[1] < 1) {
+        this.psychoJS.logger.warn(
+          `Slider "${this._name}" has style: SLIDER but the second tick is less than 1. We changed it to 1.`,
+        );
+        this._ticks[1] = 1;
+      }
+
+      // second tick is 1: the marker is frozen
+      if (this._ticks[1] === 1) {
+        this._frozenMarker = true;
+      }
     }
 
-    // central bar:
-    this._setupBar();
-
-    // ticks:
-    this._setupTicks();
-
-    // labels:
-    this._setupLabels();
-
-    // markers:
-    this._setupMarker();
-    this._addEventListeners();
+    // deal with categorical sliders:
+    this._isCategorical = this._ticks.length === 0;
+    if (this._isCategorical) {
+      this._ticks = [...Array(this._labels.length)].map((_, i) => i);
+      this._granularity = 1.0;
+    }
   }
 
   /**
@@ -960,6 +743,28 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
       if (typeof this._barFillColor !== "undefined") {
         this._body.endFill();
       }
+    }
+  }
+
+  /**
+   * Setup the labels.
+   *
+   * @protected
+   */
+  _setupLabels() {
+    const labelTextStyle = this._getTextStyle();
+    this._pixiLabels = new Array(this._labels.length);
+
+    for (let l = 0; l < this._labels.length; ++l) {
+      this._pixiLabels[l] = new PIXI.Text(this._labels[l], labelTextStyle);
+      this._pixiLabels[l].position.x = this._labelPositions_px[l][0];
+      this._pixiLabels[l].position.y = this._labelPositions_px[l][1];
+      this._pixiLabels[l].rotation =
+        (-(this._ori + this._labelOri) * Math.PI) / 180;
+      this._pixiLabels[l].anchor = this._labelAnchor;
+      this._pixiLabels[l].alpha = 1;
+
+      this._pixi.addChild(this._pixiLabels[l]);
     }
   }
 
@@ -1081,85 +886,82 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
   }
 
   /**
-   * Setup the ticks.
+   * Setup the PIXI components of the slider (bar, ticks, labels, marker, etc.).
    *
    * @protected
    */
-  _setupTicks() {
-    // Note: no ticks for SLIDER style
-    if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
+  _setupSlider() {
+    if (!this._needPixiUpdate) {
       return;
     }
+    this._needPixiUpdate = false;
 
-    const maxTickSize = Math.max(this._tickSize_px[0], this._tickSize_px[1]);
+    this._setupStyle();
 
-    this._body.lineStyle(
-      this._barLineWidth_px * 2,
-      this._tickColor.int,
-      1,
-      0.5,
+    // calculate various values in pixel units:
+    this._tickSize_px = util.to_px(this._tickSize, this._units, this._win);
+    this._fontSize_px = this._getLengthPix(this._fontSize);
+    this._barSize_px = util
+      .to_px(this._barSize, this._units, this._win, true)
+      .map((v) => Math.max(1, v));
+    this._markerSize_px = util.to_px(
+      this._markerSize,
+      this._units,
+      this._win,
+      true,
+    );
+    const tickPositions = this._ratingToPos(this._ticks);
+    this._tickPositions_px = tickPositions.map((p) =>
+      util.to_px(p, this._units, this._win),
     );
 
-    for (let tickPosition_px of this._tickPositions_px) {
-      if (this._tickType === Slider.Shape.LINE) {
-        this._body.moveTo(
-          tickPosition_px[0] - this._tickSize_px[0] / 2,
-          tickPosition_px[1] - this._tickSize_px[1] / 2,
-        );
-        this._body.lineTo(
-          tickPosition_px[0] + this._tickSize_px[0] / 2,
-          tickPosition_px[1] + this._tickSize_px[1] / 2,
-        );
-      } else if (this._tickType === Slider.Shape.DISC) {
-        this._body.beginFill(this._tickColor.int, 1);
-        this._body.drawCircle(
-          tickPosition_px[0],
-          tickPosition_px[1],
-          maxTickSize * 0.5,
-        );
-        this._body.endFill();
-      }
+    if (typeof this._pixi !== "undefined") {
+      this._removeEventListeners();
+      this._pixi.destroy(true);
     }
-  }
+    this._pixi = new PIXI.Container();
+    this._pixi.interactive = true;
+    // apply the clip mask:
+    this._pixi.mask = this._clipMask;
 
-  /**
-   * Get the PIXI Text Style applied to the PIXI.Text labels.
-   *
-   * @protected
-   */
-  _getTextStyle() {
-    this._fontSize_px = this._getLengthPix(this._fontSize);
+    this._body = new PIXI.Graphics();
+    this._body.interactive = true;
+    this._pixi.addChild(this._body);
 
-    return new PIXI.TextStyle({
-      fontFamily: this._font,
-      fontSize: Math.round(this._fontSize_px),
-      fontWeight: this._bold ? "bold" : "normal",
-      fontStyle: this._italic ? "italic" : "normal",
-      fill: this.getContrastedColor(this._labelColor, this._contrast).hex,
-      align: "center",
-    });
-  }
-
-  /**
-   * Setup the labels.
-   *
-   * @protected
-   */
-  _setupLabels() {
-    const labelTextStyle = this._getTextStyle();
-    this._pixiLabels = new Array(this._labels.length);
-
-    for (let l = 0; l < this._labels.length; ++l) {
-      this._pixiLabels[l] = new PIXI.Text(this._labels[l], labelTextStyle);
-      this._pixiLabels[l].position.x = this._labelPositions_px[l][0];
-      this._pixiLabels[l].position.y = this._labelPositions_px[l][1];
-      this._pixiLabels[l].rotation =
-        (-(this._ori + this._labelOri) * Math.PI) / 180;
-      this._pixiLabels[l].anchor = this._labelAnchor;
-      this._pixiLabels[l].alpha = 1;
-
-      this._pixi.addChild(this._pixiLabels[l]);
+    // ensure that pointer events will be captured along the slider body, even outside of
+    // marker and labels:
+    if (this._tickType === Slider.Shape.DISC) {
+      const maxTickSize_px = Math.max(
+        this._tickSize_px[0],
+        this._tickSize_px[1],
+      );
+      this._body.hitArea = new PIXI.Rectangle(
+        -(this._barSize_px[0] + maxTickSize_px) * 0.5,
+        -(this._barSize_px[1] + maxTickSize_px) * 0.5,
+        this._barSize_px[0] + maxTickSize_px,
+        this._barSize_px[1] + maxTickSize_px,
+      );
+    } else {
+      this._body.hitArea = new PIXI.Rectangle(
+        -this._barSize_px[0] / 2 - this._tickSize_px[0] / 2,
+        -this._barSize_px[1] / 2 - this._tickSize_px[1] / 2,
+        this._barSize_px[0] + this._tickSize_px[0],
+        this._barSize_px[1] + this._tickSize_px[1],
+      );
     }
+
+    // central bar:
+    this._setupBar();
+
+    // ticks:
+    this._setupTicks();
+
+    // labels:
+    this._setupLabels();
+
+    // markers:
+    this._setupMarker();
+    this._addEventListeners();
   }
 
   /**
@@ -1282,131 +1084,330 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
   }
 
   /**
-   * Convert an array of ratings into an array of [x,y] positions (in Slider units, with 0 at the center of the Slider)
+   * Setup the ticks.
    *
    * @protected
-   * @param {number[]} ratings - the array of ratings
-   * @returns {Array.<Array.<number>>} the positions corresponding to the ratings (in Slider units,
-   * with 0 at the center of the Slider)
    */
-  _ratingToPos(ratings) {
-    const range = this._ticks[this._ticks.length - 1] - this._ticks[0];
-    if (this._isHorizontal()) {
-      // in compact mode the circular markers of RADIO sliders must fit within the width:
-      if (this._compact && this._style.indexOf(Slider.Style.RADIO) > -1) {
-        return ratings.map((v) => [
-          ((v - this._ticks[0]) / range) *
-            (this._size[0] - this._tickSize[1] * 2) -
-            this._size[0] / 2 +
-            this._tickSize[1],
-          0,
-        ]);
-      } else if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
-        return ratings.map((v) => [
-          ((v - this._ticks[0]) / range - 0.5) *
-            (this._size[0] - this._markerSize[0]),
-          0,
-        ]);
-      } else {
-        return ratings.map((v) => [
-          ((v - this._ticks[0]) / range - 0.5) * this._size[0],
-          0,
-        ]);
-      }
-    } else {
-      // in compact mode the circular markers of RADIO sliders must fit within the height:
-      if (this._compact && this._style.indexOf(Slider.Style.RADIO) > -1) {
-        return ratings.map((v) => [
-          0,
-          ((v - this._ticks[0]) / range) *
-            (this._size[1] - this._tickSize[0] * 2) -
-            this._size[1] / 2 +
-            this._tickSize[0],
-        ]);
-      } else if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
-        return ratings.map((v) => [
-          0,
-          ((v - this._ticks[0]) / range - 0.5) *
-            (this._size[1] - this._markerSize[1]),
-        ]);
-      } else {
-        return ratings.map((v) => [
-          0,
-          (1.0 - (v - this._ticks[0]) / range - 0.5) * this._size[1],
-        ]);
-      }
-    }
-  }
-
-  /**
-   * Convert a [x,y] position, in pixel units, relative to the slider, into a rating.
-   *
-   * @protected
-   * @param {number[]} pos_px - the [x,y] position, in pixel units, relative to the slider.
-   * @returns {number} the corresponding rating.
-   */
-  _posToRating(pos_px) {
-    const range = this._ticks[this._ticks.length - 1] - this._ticks[0];
-    const size_px = util.to_px(this._size, this._units, this._win);
-    const markerSize_px = util.to_px(this._markerSize, this._units, this._win);
-
-    if (this._isHorizontal()) {
-      if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
-        return (
-          (pos_px[0] / (size_px[0] - markerSize_px[0]) + 0.5) * range +
-          this._ticks[0]
-        );
-      } else {
-        return (pos_px[0] / size_px[0] + 0.5) * range + this._ticks[0];
-      }
-    } else {
-      if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
-        if (size_px[1] === markerSize_px[1]) {
-        } else {
-          return (
-            (pos_px[1] / (size_px[1] - markerSize_px[1]) + 0.5) * range +
-            this._ticks[0]
-          );
-        }
-      } else {
-        return (1.0 - (pos_px[1] / size_px[1] + 0.5)) * range + this._ticks[0];
-      }
-    }
-  }
-
-  /**
-   * Determine whether the slider is horizontal.
-   *
-   * The slider is horizontal is its x-axis size is larger than its y-axis size.
-   *
-   * @protected
-   * @returns {boolean} whether or not the slider is horizontal
-   */
-  _isHorizontal() {
-    return this._size[0] > this._size[1];
-  }
-
-  /**
-   * Calculate the rating once granularity has been taken into account.
-   *
-   * @protected
-   * @param {number} rating - the input rating
-   * @returns {number} the new rating with granularity applied
-   */
-  _granularise(rating) {
-    if (typeof rating === "undefined") {
-      return undefined;
+  _setupTicks() {
+    // Note: no ticks for SLIDER style
+    if (this._style.indexOf(Slider.Style.SLIDER) > -1) {
+      return;
     }
 
-    if (this._granularity > 0) {
-      rating = Math.round(rating / this._granularity) * this._granularity;
-    }
-    rating = Math.min(
-      Math.max(this._ticks[0], rating),
-      this._ticks[this._ticks.length - 1],
+    const maxTickSize = Math.max(this._tickSize_px[0], this._tickSize_px[1]);
+
+    this._body.lineStyle(
+      this._barLineWidth_px * 2,
+      this._tickColor.int,
+      1,
+      0.5,
     );
 
-    return rating;
+    for (let tickPosition_px of this._tickPositions_px) {
+      if (this._tickType === Slider.Shape.LINE) {
+        this._body.moveTo(
+          tickPosition_px[0] - this._tickSize_px[0] / 2,
+          tickPosition_px[1] - this._tickSize_px[1] / 2,
+        );
+        this._body.lineTo(
+          tickPosition_px[0] + this._tickSize_px[0] / 2,
+          tickPosition_px[1] + this._tickSize_px[1] / 2,
+        );
+      } else if (this._tickType === Slider.Shape.DISC) {
+        this._body.beginFill(this._tickColor.int, 1);
+        this._body.drawCircle(
+          tickPosition_px[0],
+          tickPosition_px[1],
+          maxTickSize * 0.5,
+        );
+        this._body.endFill();
+      }
+    }
+  }
+
+  /**
+   * Update the stimulus, if necessary.
+   *
+   * @protected
+   */
+  _updateIfNeeded() {
+    if (!this._needUpdate) {
+      return;
+    }
+    this._needUpdate = false;
+
+    this._estimateBoundingBox();
+    this._setupSlider();
+    this._updateMarker();
+
+    this._pixi.scale.x = 1;
+    this._pixi.scale.y = -1;
+
+    this._pixi.rotation = (-this._ori * Math.PI) / 180;
+    this._pixi.position = this._getPosition_px();
+
+    this._pixi.alpha = this._opacity;
+    this._pixi.zIndex = -this._depth;
+    this.anchor = this._anchor;
+
+    // make sure that the dependent Stimuli are also updated:
+    for (const dependentStim of this._dependentStims) {
+      dependentStim.draw();
+    }
+  }
+
+  /**
+   * Update the position of the marker if necessary.
+   *
+   * @name module:visual.Slider#_updateMarker
+   * @protected
+   */
+  _updateMarker() {
+    if (!this._needMarkerUpdate) {
+      return;
+    }
+    this._needMarkerUpdate = false;
+
+    if (typeof this._marker !== "undefined") {
+      if (typeof this._markerPos !== "undefined") {
+        const visibleMarkerPos = this._ratingToPos([this._markerPos]);
+        this._marker.position = to_pixiPoint(
+          visibleMarkerPos[0],
+          this.units,
+          this.win,
+          true,
+        );
+        this._marker.alpha = 1;
+      } else {
+        this._marker.alpha = 0;
+      }
+    }
+  }
+
+  getBorderColor() {
+    return this.getLineColor();
+  }
+
+  getFillColor() {
+    return this.getMarkerColor();
+  }
+
+  /**
+   * Get the current value of the rating.
+   *
+   * @returns {number | undefined} the rating or undefined if there is none
+   */
+  getRating() {
+    const historyLength = this._history.length;
+    if (historyLength > 0) {
+      return this._history[historyLength - 1].rating;
+    } else {
+      return undefined;
+    }
+  }
+
+  /**
+   * Get the response time of the most recent change to the rating.
+   *
+   * @returns {number | undefined} the response time (in second) or undefined if there is none
+   */
+  getRT() {
+    const historyLength = this._history.length;
+    if (historyLength > 0) {
+      return this._history[historyLength - 1].responseTime;
+    } else {
+      return undefined;
+    }
+  }
+
+  /**
+   * Query whether or not the marker is currently being dragged.
+   *
+   * @returns {boolean} whether or not the marker is being dragged
+   */
+  isMarkerDragging() {
+    return this._markerDragging;
+  }
+
+  /**
+   * Set the current rating.
+   *
+   * Setting the rating does also change the visible position of the marker.
+   *
+   * @param {number} rating - the rating
+   * @param {number} [responseTime] - the reaction time
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  recordRating(rating, responseTime = undefined, log = false) {
+    // get response time:
+    if (typeof responseTime === "undefined") {
+      responseTime = this._responseClock.getTime();
+    }
+
+    // set rating:
+    // rating = this._granularise(rating);
+    // this._setAttribute('rating', rating, log);
+    this.setRating(rating, log);
+
+    // add rating and response time to history:
+    this._history.push({ rating: this._rating, responseTime });
+    this.psychoJS.logger.debug(
+      "record a new rating: ",
+      this._rating,
+      "with response time: ",
+      responseTime,
+      "for Slider: ",
+      this._name,
+    );
+
+    // update slider:
+    this._needMarkerUpdate = true;
+    this._needUpdate = true;
+  }
+
+  /**
+   * Force a refresh of the stimulus.
+   */
+  refresh() {
+    super.refresh();
+
+    this._needMarkerUpdate = true;
+  }
+
+  /**
+   * Release the PIXI representation, if there is one.
+   *
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  release(log = false) {
+    this._removeEventListeners();
+    super.release(log);
+  }
+
+  /**
+   * Reset the slider.
+   */
+  reset() {
+    this.psychoJS.logger.debug("reset Slider: ", this._name);
+
+    this._markerPos = undefined;
+    this._history = [];
+    this._rating = undefined;
+    this._responseClock.reset();
+    this.status = PsychoJS.Status.NOT_STARTED;
+
+    this._needPixiUpdate = true;
+    this._needUpdate = true;
+
+    // the marker should be invisible when markerPos is undefined:
+    if (typeof this._marker !== "undefined") {
+      this._marker.alpha = 0;
+    }
+  }
+
+  /**
+   * Setter for the anchor attribute.
+   *
+   * @param {string} anchor - anchor of the stim
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  setAnchor(anchor = "center", log = false) {
+    this._setAttribute("anchor", anchor, log);
+    if (this._pixi !== undefined) {
+      // container has origin at [0, 0], subtracting 0.5 from anchorNum vals to get a desired effect.
+      const anchorNum = this._anchorTextToNum(this._anchor);
+      this._pixi.pivot.x =
+        (anchorNum[0] - 0.5) * this._pixi.scale.x * this._pixi.width;
+      this._pixi.pivot.y =
+        (anchorNum[1] - 0.5) * this._pixi.scale.y * this._pixi.height;
+    }
+  }
+
+  setBorderColor(color) {
+    this.setLineColor(color);
+  }
+
+  setFillColor(color) {
+    this.setMarkerColor(color);
+  }
+
+  /**
+   * Setter for the markerPos attribute.
+   *
+   * <p>Setting markerPos changes the visible position of the marker to the specified rating
+   * but does not change the actual rating returned by the slider.</p>
+   *
+   * @param {number} displayedRating - the displayed rating
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setMarkerPos(displayedRating, log = false) {
+    const previousMarkerPos = this._markerPos;
+    this._markerPos = this._granularise(displayedRating);
+
+    // if the displayed rating has changed, we need to update the pixi representation:
+    if (previousMarkerPos !== this._markerPos) {
+      this._needMarkerUpdate = true;
+      this._needUpdate = true;
+    }
+  }
+
+  /**
+   * Setter for the orientation attribute.
+   *
+   * @param {number} ori - the orientation in degree with 0 as the vertical position, positive values rotate clockwise.
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setOri(ori = 0, log = false) {
+    const oriChanged = this._setAttribute("ori", ori, log);
+    if (oriChanged) {
+      this._pixi.rotation = (-this._ori * Math.PI) / 180;
+      let i;
+      for (i = 0; i < this._pixiLabels.length; ++i) {
+        this._pixiLabels[i].rotation =
+          (-(this._ori + this._labelOri) * Math.PI) / 180;
+      }
+    }
+  }
+
+  /**
+   * Setter for the rating attribute.
+   *
+   * Setting the rating does not change the visible position of the marker.
+   *
+   * @param {number} rating - the rating
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setRating(rating, log = false) {
+    rating = this._granularise(rating);
+    this._markerPos = rating;
+    if (this._isCategorical) {
+      rating = this._labels[Math.round(rating)];
+    }
+
+    this._setAttribute("rating", rating, log);
+  }
+
+  /**
+   * Setter for the readOnly attribute.
+   *
+   * Read-only sliders are half-opaque and do not provide responses.
+   *
+   * @param {boolean} [readOnly= true] - whether or not the slider is read-only
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setReadOnly(readOnly = true, log = false) {
+    const hasChanged = this._setAttribute("readOnly", readOnly, log);
+
+    if (hasChanged) {
+      // halve the opacity:
+      if (readOnly) {
+        this._opacity /= 2.0;
+      } else {
+        this._opacity *= 2.0;
+      }
+
+      this._needUpdate = true;
+    }
   }
 }
 
@@ -1417,10 +1418,10 @@ export class Slider extends util.mix(VisualStim).with(ColorMixin, WindowMixin) {
  * @readonly
  */
 Slider.Shape = {
-  DISC: Symbol.for("DISC"),
-  TRIANGLE: Symbol.for("TRIANGLE"),
-  LINE: Symbol.for("LINE"),
   BOX: Symbol.for("BOX"),
+  DISC: Symbol.for("DISC"),
+  LINE: Symbol.for("LINE"),
+  TRIANGLE: Symbol.for("TRIANGLE"),
 };
 
 /**
@@ -1430,12 +1431,12 @@ Slider.Shape = {
  * @readonly
  */
 Slider.Style = {
-  RATING: Symbol.for("RATING"),
-  TRIANGLE_MARKER: Symbol.for("TRIANGLE_MARKER"),
-  SLIDER: Symbol.for("SLIDER"),
-  WHITE_ON_BLACK: Symbol.for("WHITE_ON_BLACK"),
   LABELS_45: Symbol.for("LABELS_45"),
   RADIO: Symbol.for("RADIO"),
+  RATING: Symbol.for("RATING"),
+  SLIDER: Symbol.for("SLIDER"),
+  TRIANGLE_MARKER: Symbol.for("TRIANGLE_MARKER"),
+  WHITE_ON_BLACK: Symbol.for("WHITE_ON_BLACK"),
 };
 
 /**
@@ -1449,15 +1450,15 @@ Slider.Style = {
 Slider.Skin = {
   MARKER_SIZE: null,
   STANDARD: {
-    MARKER_COLOR: new Color("red"),
     BAR_LINE_COLOR: null,
-    TICK_COLOR: null,
     LABEL_COLOR: null,
+    MARKER_COLOR: new Color("red"),
+    TICK_COLOR: null,
   },
   WHITE_ON_BLACK: {
-    MARKER_COLOR: new Color("white"),
     BAR_LINE_COLOR: new Color("black"),
-    TICK_COLOR: new Color("black"),
     LABEL_COLOR: new Color("black"),
+    MARKER_COLOR: new Color("white"),
+    TICK_COLOR: new Color("black"),
   },
 };

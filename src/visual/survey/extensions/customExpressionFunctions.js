@@ -2,10 +2,6 @@
 // NOTE! Survey stim uses property .name of these methods on registering stage.
 // Methods are available inside SurveyJS expressions using their actual names.
 class ExpressionFunctions {
-  static rnd() {
-    return Math.random();
-  }
-
   static arrayContains(params) {
     if (params[0] instanceof Array) {
       let searchValue = params[1];
@@ -28,13 +24,6 @@ class ExpressionFunctions {
     return false;
   }
 
-  static stringContains(params) {
-    if (typeof params[0] === "string") {
-      return params[0].indexOf(params[1]) !== -1;
-    }
-    return false;
-  }
-
   static isEmpty(params) {
     let questionIsEmpty = false;
     if (params[0] instanceof Array || typeof params[0] === "string") {
@@ -47,6 +36,17 @@ class ExpressionFunctions {
 
   static isNotEmpty(params) {
     return !ExpressionFunctions.isEmpty(params);
+  }
+
+  static rnd() {
+    return Math.random();
+  }
+
+  static stringContains(params) {
+    if (typeof params[0] === "string") {
+      return params[0].indexOf(params[1]) !== -1;
+    }
+    return false;
   }
 }
 

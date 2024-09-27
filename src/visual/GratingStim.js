@@ -6,41 +6,41 @@
  * @license Distributed under the terms of the MIT License
  */
 
-import * as PIXI from "pixi.js-legacy";
 import { AdjustmentFilter } from "@pixi/filter-adjustment";
+import * as PIXI from "pixi.js-legacy";
+
 import { Color } from "../util/Color.js";
 import { to_pixiPoint } from "../util/Pixi.js";
 import * as util from "../util/Util.js";
-import { VisualStim } from "./VisualStim.js";
-import defaultQuadVert from "./shaders/defaultQuad.vert";
-import imageShader from "./shaders/imageShader.frag";
-import sinShader from "./shaders/sinShader.frag";
-import sqrShader from "./shaders/sqrShader.frag";
-import sawShader from "./shaders/sawShader.frag";
-import triShader from "./shaders/triShader.frag";
-import sinXsinShader from "./shaders/sinXsinShader.frag";
-import sqrXsqrShader from "./shaders/sqrXsqrShader.frag";
 import circleShader from "./shaders/circleShader.frag";
-import gaussShader from "./shaders/gaussShader.frag";
 import crossShader from "./shaders/crossShader.frag";
+import defaultQuadVert from "./shaders/defaultQuad.vert";
+import gaussShader from "./shaders/gaussShader.frag";
+import imageShader from "./shaders/imageShader.frag";
+import radialStim from "./shaders/radialShader.frag";
 import radRampShader from "./shaders/radRampShader.frag";
 import raisedCosShader from "./shaders/raisedCosShader.frag";
-import radialStim from "./shaders/radialShader.frag";
-
-import defaultQuadVertWGL1 from "./shaders/wgl1/defaultQuad.vert";
-import imageShaderWGL1 from "./shaders/wgl1/imageShader.frag";
-import sinShaderWGL1 from "./shaders/wgl1/sinShader.frag";
-import sqrShaderWGL1 from "./shaders/wgl1/sqrShader.frag";
-import sawShaderWGL1 from "./shaders/wgl1/sawShader.frag";
-import triShaderWGL1 from "./shaders/wgl1/triShader.frag";
-import sinXsinShaderWGL1 from "./shaders/wgl1/sinXsinShader.frag";
-import sqrXsqrShaderWGL1 from "./shaders/wgl1/sqrXsqrShader.frag";
+import sawShader from "./shaders/sawShader.frag";
+import sinShader from "./shaders/sinShader.frag";
+import sinXsinShader from "./shaders/sinXsinShader.frag";
+import sqrShader from "./shaders/sqrShader.frag";
+import sqrXsqrShader from "./shaders/sqrXsqrShader.frag";
+import triShader from "./shaders/triShader.frag";
 import circleShaderWGL1 from "./shaders/wgl1/circleShader.frag";
-import gaussShaderWGL1 from "./shaders/wgl1/gaussShader.frag";
 import crossShaderWGL1 from "./shaders/wgl1/crossShader.frag";
+import defaultQuadVertWGL1 from "./shaders/wgl1/defaultQuad.vert";
+import gaussShaderWGL1 from "./shaders/wgl1/gaussShader.frag";
+import imageShaderWGL1 from "./shaders/wgl1/imageShader.frag";
+import radialStimWGL1 from "./shaders/wgl1/radialShader.frag";
 import radRampShaderWGL1 from "./shaders/wgl1/radRampShader.frag";
 import raisedCosShaderWGL1 from "./shaders/wgl1/raisedCosShader.frag";
-import radialStimWGL1 from "./shaders/wgl1/radialShader.frag";
+import sawShaderWGL1 from "./shaders/wgl1/sawShader.frag";
+import sinShaderWGL1 from "./shaders/wgl1/sinShader.frag";
+import sinXsinShaderWGL1 from "./shaders/wgl1/sinXsinShader.frag";
+import sqrShaderWGL1 from "./shaders/wgl1/sqrShader.frag";
+import sqrXsqrShaderWGL1 from "./shaders/wgl1/sqrXsqrShader.frag";
+import triShaderWGL1 from "./shaders/wgl1/triShader.frag";
+import { VisualStim } from "./VisualStim.js";
 
 /**
  * Grating Stimulus.
@@ -48,6 +48,21 @@ import radialStimWGL1 from "./shaders/wgl1/radialShader.frag";
  * @extends VisualStim
  */
 export class GratingStim extends VisualStim {
+  static #BLEND_MODES_MAP = {
+    add: PIXI.BLEND_MODES.ADD,
+    avg: PIXI.BLEND_MODES.NORMAL,
+    mul: PIXI.BLEND_MODES.MULTIPLY,
+    screen: PIXI.BLEND_MODES.SCREEN,
+  };
+
+  /**
+   * Default size of the Grating Stimuli in pixels.
+   *
+   * @type {Array}
+   * @default [256, 256]
+   */
+  static #DEFAULT_STIM_SIZE_PX = [256, 256]; // in pixels
+
   /**
    * An object that keeps shaders source code and default uniform values for them.
    * Shader source code is later used for construction of shader programs to create respective visual stimuli.
@@ -148,258 +163,243 @@ export class GratingStim extends VisualStim {
    * @property {float} raisedCos.uniforms.uAlpha=1.0 - value of the alpha channel.
    */
   static #SHADERS = {
-    imageShader: {
-      shader: imageShader,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    sin: {
-      shader: sinShader,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    sqr: {
-      shader: sqrShader,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    saw: {
-      shader: sawShader,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    tri: {
-      shader: triShader,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uPeriod: 1.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    sinXsin: {
-      shader: sinXsinShader,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    sqrXsqr: {
-      shader: sqrXsqrShader,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
     circle: {
       shader: circleShader,
       uniforms: {
-        uRadius: 1.0,
-        uColor: [1, 1, 1],
         uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uRadius: 1.0,
+      },
+    },
+    cross: {
+      shader: crossShader,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uThickness: 0.2,
       },
     },
     gauss: {
       shader: gaussShader,
       uniforms: {
         uA: 1.0,
+        uAlpha: 1.0,
         uB: 0.0,
         uC: 0.16,
         uColor: [1, 1, 1],
-        uAlpha: 1.0,
       },
     },
-    cross: {
-      shader: crossShader,
+    imageShader: {
+      shader: imageShader,
       uniforms: {
-        uThickness: 0.2,
-        uColor: [1, 1, 1],
         uAlpha: 1.0,
-      },
-    },
-    radRamp: {
-      shader: radRampShader,
-      uniforms: {
-        uSqueeze: 1.0,
         uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    raisedCos: {
-      shader: raisedCosShader,
-      uniforms: {
-        uBeta: 0.25,
-        uPeriod: 0.625,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
+        uFreq: 1.0,
+        uPhase: 0.0,
       },
     },
     radialStim: {
       shader: radialStim,
       uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
         uFreq: 20.0,
         uPhase: 0.0,
-        uColor: [1, 1, 1],
+      },
+    },
+    radRamp: {
+      shader: radRampShader,
+      uniforms: {
         uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uSqueeze: 1.0,
+      },
+    },
+    raisedCos: {
+      shader: raisedCosShader,
+      uniforms: {
+        uAlpha: 1.0,
+        uBeta: 0.25,
+        uColor: [1, 1, 1],
+        uPeriod: 0.625,
+      },
+    },
+    saw: {
+      shader: sawShader,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPhase: 0.0,
+      },
+    },
+    sin: {
+      shader: sinShader,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPhase: 0.0,
+      },
+    },
+    sinXsin: {
+      shader: sinXsinShader,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPhase: 0.0,
+      },
+    },
+    sqr: {
+      shader: sqrShader,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPhase: 0.0,
+      },
+    },
+    sqrXsqr: {
+      shader: sqrXsqrShader,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPhase: 0.0,
+      },
+    },
+    tri: {
+      shader: triShader,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPeriod: 1.0,
+        uPhase: 0.0,
       },
     },
   };
 
   static #SHADERSWGL1 = {
-    imageShader: {
-      shader: imageShaderWGL1,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    sin: {
-      shader: sinShaderWGL1,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    sqr: {
-      shader: sqrShaderWGL1,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    saw: {
-      shader: sawShaderWGL1,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    tri: {
-      shader: triShaderWGL1,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uPeriod: 1.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    sinXsin: {
-      shader: sinXsinShaderWGL1,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    sqrXsqr: {
-      shader: sqrXsqrShaderWGL1,
-      uniforms: {
-        uFreq: 1.0,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
     circle: {
       shader: circleShaderWGL1,
       uniforms: {
-        uRadius: 1.0,
-        uColor: [1, 1, 1],
         uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uRadius: 1.0,
+      },
+    },
+    cross: {
+      shader: crossShaderWGL1,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uThickness: 0.2,
       },
     },
     gauss: {
       shader: gaussShaderWGL1,
       uniforms: {
         uA: 1.0,
+        uAlpha: 1.0,
         uB: 0.0,
         uC: 0.16,
         uColor: [1, 1, 1],
-        uAlpha: 1.0,
       },
     },
-    cross: {
-      shader: crossShaderWGL1,
+    imageShader: {
+      shader: imageShaderWGL1,
       uniforms: {
-        uThickness: 0.2,
-        uColor: [1, 1, 1],
         uAlpha: 1.0,
-      },
-    },
-    radRamp: {
-      shader: radRampShaderWGL1,
-      uniforms: {
-        uSqueeze: 1.0,
         uColor: [1, 1, 1],
-        uAlpha: 1.0,
-      },
-    },
-    raisedCos: {
-      shader: raisedCosShaderWGL1,
-      uniforms: {
-        uBeta: 0.25,
-        uPeriod: 0.625,
-        uColor: [1, 1, 1],
-        uAlpha: 1.0,
+        uFreq: 1.0,
+        uPhase: 0.0,
       },
     },
     radialStim: {
       shader: radialStimWGL1,
       uniforms: {
-        uFreq: 20.0,
-        uStep: 0.0017,
-        uDX: 1,
-        uPhase: 0.0,
-        uColor: [1, 1, 1],
         uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uDX: 1,
+        uFreq: 20.0,
+        uPhase: 0.0,
+        uStep: 0.0017,
       },
     },
-  };
-
-  /**
-   * Default size of the Grating Stimuli in pixels.
-   *
-   * @type {Array}
-   * @default [256, 256]
-   */
-  static #DEFAULT_STIM_SIZE_PX = [256, 256]; // in pixels
-
-  static #BLEND_MODES_MAP = {
-    avg: PIXI.BLEND_MODES.NORMAL,
-    add: PIXI.BLEND_MODES.ADD,
-    mul: PIXI.BLEND_MODES.MULTIPLY,
-    screen: PIXI.BLEND_MODES.SCREEN,
+    radRamp: {
+      shader: radRampShaderWGL1,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uSqueeze: 1.0,
+      },
+    },
+    raisedCos: {
+      shader: raisedCosShaderWGL1,
+      uniforms: {
+        uAlpha: 1.0,
+        uBeta: 0.25,
+        uColor: [1, 1, 1],
+        uPeriod: 0.625,
+      },
+    },
+    saw: {
+      shader: sawShaderWGL1,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPhase: 0.0,
+      },
+    },
+    sin: {
+      shader: sinShaderWGL1,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPhase: 0.0,
+      },
+    },
+    sinXsin: {
+      shader: sinXsinShaderWGL1,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPhase: 0.0,
+      },
+    },
+    sqr: {
+      shader: sqrShaderWGL1,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPhase: 0.0,
+      },
+    },
+    sqrXsqr: {
+      shader: sqrXsqrShaderWGL1,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPhase: 0.0,
+      },
+    },
+    tri: {
+      shader: triShaderWGL1,
+      uniforms: {
+        uAlpha: 1.0,
+        uColor: [1, 1, 1],
+        uFreq: 1.0,
+        uPeriod: 1.0,
+        uPhase: 0.0,
+      },
+    },
   };
 
   /**
@@ -425,40 +425,40 @@ export class GratingStim extends VisualStim {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    name,
-    tex = "sin",
-    win,
-    mask,
-    pos,
     anchor,
-    units,
-    sf = 1.0,
-    ori,
-    phase,
-    size,
+    autoDraw,
+    autoLog,
+    blendmode,
     color,
     colorSpace,
-    opacity,
     contrast = 1,
     depth,
     interpolate,
-    blendmode,
-    autoDraw,
-    autoLog,
+    mask,
     maskParams,
+    name,
+    opacity,
+    ori,
+    phase,
+    pos,
+    sf = 1.0,
+    size,
+    tex = "sin",
+    units,
+    win,
   } = {}) {
     super({
-      name,
-      win,
-      units,
-      ori,
-      opacity,
-      depth,
-      pos,
       anchor,
-      size,
       autoDraw,
       autoLog,
+      depth,
+      name,
+      opacity,
+      ori,
+      pos,
+      size,
+      units,
+      win,
     });
 
     this._adjustmentFilter = new AdjustmentFilter({
@@ -509,6 +509,425 @@ export class GratingStim extends VisualStim {
   }
 
   /**
+   * Estimate the bounding box.
+   *
+   * @override
+   * @protected
+   */
+  _estimateBoundingBox() {
+    const size = this._getDisplaySize();
+    if (typeof size !== "undefined") {
+      this._boundingBox = new PIXI.Rectangle(
+        this._pos[0] - size[0] / 2,
+        this._pos[1] - size[1] / 2,
+        size[0],
+        size[1],
+      );
+    }
+
+    // TODO take the orientation into account
+  }
+
+  /**
+   * Get the size of the display image, which is either that of the GratingStim or that of the image
+   * it contains.
+   *
+   * @protected
+   * @return {number[]} the size of the displayed image
+   */
+  _getDisplaySize() {
+    let displaySize = this._size;
+
+    if (typeof displaySize === "undefined") {
+      // use the size of the pixi element, if we have access to it:
+      if (typeof this._pixi !== "undefined" && this._pixi.width > 0) {
+        const pixiContainerSize = [this._pixi.width, this._pixi.height];
+        displaySize = util.to_unit(
+          pixiContainerSize,
+          "pix",
+          this.win,
+          this.units,
+        );
+      }
+    }
+
+    return displaySize;
+  }
+
+  /**
+   * Generate PIXI.Mesh object based on provided shader function name and uniforms.
+   *
+   * @protected
+   * @param {String} shaderName - name of the shader. Must be one of the SHADERS
+   * @param {Object} uniforms - a set of uniforms to supply to the shader. Mixed together with default uniform values.
+   * @return {Pixi.Mesh} Pixi.Mesh object that represents shader and later added to the scene.
+   */
+  _getPixiMeshFromPredefinedShaders(shaderName = "", uniforms = {}) {
+    const geometry = new PIXI.Geometry();
+    geometry.addAttribute(
+      "aVertexPosition",
+      [
+        -this._size_px[0] * 0.5,
+        -this._size_px[1] * 0.5,
+        this._size_px[0] * 0.5,
+        -this._size_px[1] * 0.5,
+        this._size_px[0] * 0.5,
+        this._size_px[1] * 0.5,
+        -this._size_px[0] * 0.5,
+        this._size_px[1] * 0.5,
+      ],
+      2,
+    );
+    geometry.addAttribute("aUvs", [0, 0, 1, 0, 1, 1, 0, 1], 2);
+    geometry.addIndex([0, 1, 2, 0, 2, 3]);
+    let vertexSrc;
+    let fragmentSrc;
+    let uniformsFinal;
+    if (this._win._renderer.context.webGLVersion >= 2) {
+      vertexSrc = defaultQuadVert;
+      fragmentSrc = GratingStim.#SHADERS[shaderName].shader;
+      uniformsFinal = Object.assign(
+        {},
+        GratingStim.#SHADERS[shaderName].uniforms,
+        uniforms,
+      );
+    } else {
+      vertexSrc = defaultQuadVertWGL1;
+      fragmentSrc = GratingStim.#SHADERSWGL1[shaderName].shader;
+      uniformsFinal = Object.assign(
+        {},
+        GratingStim.#SHADERSWGL1[shaderName].uniforms,
+        uniforms,
+      );
+    }
+    const shader = PIXI.Shader.from(vertexSrc, fragmentSrc, uniformsFinal);
+    return new PIXI.Mesh(geometry, shader);
+  }
+
+  /**
+   * Update the stimulus, if necessary.
+   *
+   * @protected
+   */
+  _updateIfNeeded() {
+    if (!this._needUpdate) {
+      return;
+    }
+    this._needUpdate = false;
+
+    // update the PIXI representation, if need be:
+    if (this._needPixiUpdate) {
+      this._needPixiUpdate = false;
+      this._size_px = util.to_px(this._size, this.units, this.win);
+      let shaderName;
+      let shaderUniforms;
+      let currentUniforms = {};
+      if (typeof this._pixi !== "undefined") {
+        if (this._pixi instanceof PIXI.Mesh) {
+          Object.assign(currentUniforms, this._pixi.shader.uniforms);
+        }
+        this._pixi.destroy(true);
+      }
+      this._pixi = undefined;
+
+      // no image to draw: return immediately
+      if (typeof this._tex === "undefined") {
+        return;
+      }
+
+      if (this._tex instanceof HTMLImageElement) {
+        // Not using PIXI.Texture.from() on purpose, as it caches both PIXI.Texture and PIXI.BaseTexture.
+        // As a result of that we can have multiple GratingStim instances using same PIXI.BaseTexture,
+        // thus changing texture related properties like interpolation, or calling _pixi.destroy(true)
+        // will affect all GratingStims who happen to share that BaseTexture.
+        shaderName = "imageShader";
+        let shaderTex = new PIXI.Texture(
+          new PIXI.BaseTexture(this._tex, {
+            scaleMode: this._interpolate
+              ? PIXI.SCALE_MODES.LINEAR
+              : PIXI.SCALE_MODES.NEAREST,
+            wrapMode: PIXI.WRAP_MODES.REPEAT,
+          }),
+        );
+        shaderUniforms = {
+          uColor: this._color.rgbFull,
+          uFreq: this._SF,
+          uPhase: this._phase,
+          uTex: shaderTex,
+        };
+      } else {
+        shaderName = this._tex;
+        shaderUniforms = {
+          uColor: this._color.rgbFull,
+          uFreq: this._SF,
+          uPhase: this._phase,
+        };
+      }
+      this._pixi = this._getPixiMeshFromPredefinedShaders(
+        shaderName,
+        Object.assign(shaderUniforms, currentUniforms),
+      );
+      this._pixi.filters = [this._adjustmentFilter];
+
+      // add a mask if need be:
+      if (typeof this._mask !== "undefined") {
+        if (this._mask instanceof HTMLImageElement) {
+          // Building new PIXI.BaseTexture each time we create a mask. See notes on shader texture creation above.
+          this._pixi.mask = PIXI.Sprite.from(
+            new PIXI.Texture(new PIXI.BaseTexture(this._mask)),
+          );
+          this._pixi.mask.width = this._size_px[0];
+          this._pixi.mask.height = this._size_px[1];
+          this._pixi.addChild(this._pixi.mask);
+        } else {
+          const maskMesh = this._getPixiMeshFromPredefinedShaders(this._mask);
+
+          // Since maskMesh is centered around (0, 0) (has vertices going around it),
+          // offsetting maskMesh position to properly cover render target texture,
+          // which created with top-left corner at (0, 0).
+          maskMesh.position.set(this._size_px[0] * 0.5, this._size_px[1] * 0.5);
+
+          // For some reason setting PIXI.Mesh as .mask doesn't do anything,
+          // rendering mask to texture for further use.
+          const rt = PIXI.RenderTexture.create({
+            height: this._size_px[1],
+            scaleMode: this._interpolate
+              ? PIXI.SCALE_MODES.LINEAR
+              : PIXI.SCALE_MODES.NEAREST,
+            width: this._size_px[0],
+          });
+          this.win._renderer.render(maskMesh, {
+            renderTexture: rt,
+          });
+          const maskSprite = new PIXI.Sprite.from(rt);
+          this._pixi.mask = maskSprite;
+          this._pixi.addChild(maskSprite);
+        }
+        // Since grating mesh is centered around (0, 0), setting mask's anchor to center to properly cover target image.
+        this._pixi.mask.anchor.set(0.5);
+      }
+
+      // since _pixi.width may not be immediately available but the rest of the code needs its value
+      // we arrange for repeated calls to _updateIfNeeded until we have a width:
+      if (this._pixi.width === 0) {
+        this._needUpdate = true;
+        this._needPixiUpdate = true;
+        return;
+      }
+    }
+
+    this._pixi.zIndex = -this._depth;
+    this.opacity = this._opacity;
+    this.anchor = this._anchor;
+
+    // set the scale:
+    this._pixi.scale.x = 1;
+    this._pixi.scale.y = -1;
+
+    let pos = to_pixiPoint(this.pos, this.units, this.win);
+    this._pixi.position.set(pos.x, pos.y);
+    this._pixi.rotation = (-this.ori * Math.PI) / 180;
+
+    // re-estimate the bounding box, as the texture's width may now be available:
+    this._estimateBoundingBox();
+  }
+
+  /**
+   * Setter for the anchor attribute.
+   *
+   * @param {string} anchor - anchor of the stim
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  setAnchor(anchor = "center", log = false) {
+    this._setAttribute("anchor", anchor, log);
+    if (this._pixi !== undefined) {
+      // Vertices are set directly with origin at [0, 0], centered around it.
+      // Subtracting 0.5 from anchorNum vals to get desired effect.
+      const anchorNum = this._anchorTextToNum(this._anchor);
+      this._pixi.pivot.x =
+        (anchorNum[0] - 0.5) * this._pixi.scale.x * this._pixi.width;
+      this._pixi.pivot.y =
+        (anchorNum[1] - 0.5) * this._pixi.scale.y * this._pixi.height;
+    }
+  }
+
+  /**
+   * Set blend mode of the grating stimulus.
+   *
+   * @param {String} blendMode - blend mode, can be one of the following: ["avg", "add", "mul", "screen"].
+   * @param {boolean} [log=false] - whether or not to log
+   */
+  setBlendmode(blendMode = "avg", log = false) {
+    this._setAttribute("blendmode", blendMode, log);
+    if (this._pixi !== undefined) {
+      let pixiBlendMode = GratingStim.#BLEND_MODES_MAP[blendMode];
+      if (pixiBlendMode === undefined) {
+        pixiBlendMode = PIXI.BLEND_MODES.NORMAL;
+      }
+      if (this._pixi.filters) {
+        this._pixi.filters[this._pixi.filters.length - 1].blendMode =
+          pixiBlendMode;
+      } else {
+        this._pixi.blendMode = pixiBlendMode;
+      }
+    }
+  }
+
+  /**
+   * Set foreground color value for the grating stimulus.
+   *
+   * @param {Color} colorVal - color value, can be String like "red" or "#ff0000" or Number like 0xff0000.
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setColor(colorVal = "white", log = false) {
+    const colorObj =
+      colorVal instanceof Color
+        ? colorVal
+        : new Color(colorVal, Color.COLOR_SPACE[this._colorSpace]);
+    this._setAttribute("color", colorObj, log);
+    if (this._pixi instanceof PIXI.Mesh) {
+      this._pixi.shader.uniforms.uColor = colorObj.rgbFull;
+    }
+  }
+
+  /**
+   * Set color space value for the grating stimulus.
+   *
+   * @param {String} colorSpaceVal - color space value
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setColorSpace(colorSpaceVal = "RGB", log = false) {
+    let colorSpaceValU = colorSpaceVal.toUpperCase();
+    if (Color.COLOR_SPACE[colorSpaceValU] === undefined) {
+      colorSpaceValU = "RGB";
+    }
+    const hasChanged = this._setAttribute("colorSpace", colorSpaceValU, log);
+    if (hasChanged) {
+      this.setColor(this._color);
+    }
+  }
+
+  /**
+   * Whether to interpolate (linearly) the texture in the stimulus.
+   *
+   * @param {boolean} interpolate - interpolate or not.
+   * @param {boolean} [log=false] - whether or not to log
+   */
+  setInterpolate(interpolate = false, log = false) {
+    this._setAttribute("interpolate", interpolate, log);
+    if (
+      this._pixi instanceof PIXI.Mesh &&
+      this._pixi.shader.uniforms.uTex instanceof PIXI.Texture
+    ) {
+      this._pixi.shader.uniforms.uTex.baseTexture.scaleMode = interpolate
+        ? PIXI.SCALE_MODES.LINEAR
+        : PIXI.SCALE_MODES.NEAREST;
+      this._pixi.shader.uniforms.uTex.baseTexture.update();
+    }
+  }
+
+  /**
+   * Setter for the mask attribute.
+   *
+   * @param {HTMLImageElement | string} mask - the name of the mask resource or HTMLImageElement corresponding to the mask
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setMask(mask, log = false) {
+    const response = {
+      context: "when setting the mask of GratingStim: " + this._name,
+      origin: "GratingStim.setMask",
+    };
+
+    try {
+      // mask is undefined: that's fine but we raise a warning in case this is a sympton of an actual problem
+      if (typeof mask === "undefined") {
+        this.psychoJS.logger.warn(
+          "setting the mask of GratingStim: " +
+            this._name +
+            " with argument: undefined.",
+        );
+        this.psychoJS.logger.debug(
+          "set the mask of GratingStim: " + this._name + " as: undefined",
+        );
+      } else if (GratingStim.#SHADERS[mask] !== undefined) {
+        // mask is a string and it is one of predefined functions available in shaders
+        this.psychoJS.logger.debug(
+          "the mask is one of predefined functions. Set the mask of GratingStim: " +
+            this._name +
+            " as: " +
+            mask,
+        );
+      } else {
+        // mask is a string: it should be the name of a resource, which we load
+        if (typeof mask === "string") {
+          mask = this.psychoJS.serverManager.getResource(mask);
+        }
+
+        // mask should now be an actual HTMLImageElement: we raise an error if it is not
+        if (!(mask instanceof HTMLImageElement)) {
+          throw "the argument: " + mask.toString() + ' is not an image" }';
+        }
+
+        this.psychoJS.logger.debug(
+          "set the mask of GratingStim: " +
+            this._name +
+            " as: src= " +
+            mask.src +
+            ", size= " +
+            mask.width +
+            "x" +
+            mask.height,
+        );
+      }
+
+      this._setAttribute("mask", mask, log);
+
+      this._onChange(true, false)();
+    } catch (error) {
+      throw Object.assign(response, { error });
+    }
+  }
+
+  /**
+   * Determines how visible the stimulus is relative to background.
+   *
+   * @param {number} [opacity=1] opacity - The value should be a single float ranging 1.0 (opaque) to 0.0 (transparent).
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setOpacity(opacity = 1, log = false) {
+    this._setAttribute("opacity", opacity, log);
+    if (this._pixi instanceof PIXI.Mesh) {
+      this._pixi.shader.uniforms.uAlpha = opacity;
+    }
+  }
+
+  /**
+   * Set phase value for the function.
+   *
+   * @param {number} phase - phase value
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setPhase(phase, log = false) {
+    this._setAttribute("phase", phase, log);
+    if (this._pixi instanceof PIXI.Mesh) {
+      this._pixi.shader.uniforms.uPhase = -phase;
+    }
+  }
+
+  /**
+   * Set spatial frequency value for the function.
+   *
+   * @param {number} sf - spatial frequency value
+   * @param {boolean} [log=false] - whether or not to log
+   */
+  setSF(sf, log = false) {
+    this._setAttribute("SF", sf, log);
+    if (this._pixi instanceof PIXI.Mesh) {
+      this._pixi.shader.uniforms.uFreq = sf;
+    }
+  }
+
+  /**
    * Setter for the tex attribute.
    *
    * @param {HTMLImageElement | string} tex - the name of built in shader function or name of the image resource or HTMLImageElement corresponding to the image
@@ -516,8 +935,8 @@ export class GratingStim extends VisualStim {
    */
   setTex(tex, log = false) {
     const response = {
-      origin: "GratingStim.setTex",
       context: "when setting the tex of GratingStim: " + this._name,
+      origin: "GratingStim.setTex",
     };
 
     try {
@@ -576,424 +995,5 @@ export class GratingStim extends VisualStim {
     } catch (error) {
       throw Object.assign(response, { error });
     }
-  }
-
-  /**
-   * Setter for the mask attribute.
-   *
-   * @param {HTMLImageElement | string} mask - the name of the mask resource or HTMLImageElement corresponding to the mask
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setMask(mask, log = false) {
-    const response = {
-      origin: "GratingStim.setMask",
-      context: "when setting the mask of GratingStim: " + this._name,
-    };
-
-    try {
-      // mask is undefined: that's fine but we raise a warning in case this is a sympton of an actual problem
-      if (typeof mask === "undefined") {
-        this.psychoJS.logger.warn(
-          "setting the mask of GratingStim: " +
-            this._name +
-            " with argument: undefined.",
-        );
-        this.psychoJS.logger.debug(
-          "set the mask of GratingStim: " + this._name + " as: undefined",
-        );
-      } else if (GratingStim.#SHADERS[mask] !== undefined) {
-        // mask is a string and it is one of predefined functions available in shaders
-        this.psychoJS.logger.debug(
-          "the mask is one of predefined functions. Set the mask of GratingStim: " +
-            this._name +
-            " as: " +
-            mask,
-        );
-      } else {
-        // mask is a string: it should be the name of a resource, which we load
-        if (typeof mask === "string") {
-          mask = this.psychoJS.serverManager.getResource(mask);
-        }
-
-        // mask should now be an actual HTMLImageElement: we raise an error if it is not
-        if (!(mask instanceof HTMLImageElement)) {
-          throw "the argument: " + mask.toString() + ' is not an image" }';
-        }
-
-        this.psychoJS.logger.debug(
-          "set the mask of GratingStim: " +
-            this._name +
-            " as: src= " +
-            mask.src +
-            ", size= " +
-            mask.width +
-            "x" +
-            mask.height,
-        );
-      }
-
-      this._setAttribute("mask", mask, log);
-
-      this._onChange(true, false)();
-    } catch (error) {
-      throw Object.assign(response, { error });
-    }
-  }
-
-  /**
-   * Get the size of the display image, which is either that of the GratingStim or that of the image
-   * it contains.
-   *
-   * @protected
-   * @return {number[]} the size of the displayed image
-   */
-  _getDisplaySize() {
-    let displaySize = this._size;
-
-    if (typeof displaySize === "undefined") {
-      // use the size of the pixi element, if we have access to it:
-      if (typeof this._pixi !== "undefined" && this._pixi.width > 0) {
-        const pixiContainerSize = [this._pixi.width, this._pixi.height];
-        displaySize = util.to_unit(
-          pixiContainerSize,
-          "pix",
-          this.win,
-          this.units,
-        );
-      }
-    }
-
-    return displaySize;
-  }
-
-  /**
-   * Estimate the bounding box.
-   *
-   * @override
-   * @protected
-   */
-  _estimateBoundingBox() {
-    const size = this._getDisplaySize();
-    if (typeof size !== "undefined") {
-      this._boundingBox = new PIXI.Rectangle(
-        this._pos[0] - size[0] / 2,
-        this._pos[1] - size[1] / 2,
-        size[0],
-        size[1],
-      );
-    }
-
-    // TODO take the orientation into account
-  }
-
-  /**
-   * Generate PIXI.Mesh object based on provided shader function name and uniforms.
-   *
-   * @protected
-   * @param {String} shaderName - name of the shader. Must be one of the SHADERS
-   * @param {Object} uniforms - a set of uniforms to supply to the shader. Mixed together with default uniform values.
-   * @return {Pixi.Mesh} Pixi.Mesh object that represents shader and later added to the scene.
-   */
-  _getPixiMeshFromPredefinedShaders(shaderName = "", uniforms = {}) {
-    const geometry = new PIXI.Geometry();
-    geometry.addAttribute(
-      "aVertexPosition",
-      [
-        -this._size_px[0] * 0.5,
-        -this._size_px[1] * 0.5,
-        this._size_px[0] * 0.5,
-        -this._size_px[1] * 0.5,
-        this._size_px[0] * 0.5,
-        this._size_px[1] * 0.5,
-        -this._size_px[0] * 0.5,
-        this._size_px[1] * 0.5,
-      ],
-      2,
-    );
-    geometry.addAttribute("aUvs", [0, 0, 1, 0, 1, 1, 0, 1], 2);
-    geometry.addIndex([0, 1, 2, 0, 2, 3]);
-    let vertexSrc;
-    let fragmentSrc;
-    let uniformsFinal;
-    if (this._win._renderer.context.webGLVersion >= 2) {
-      vertexSrc = defaultQuadVert;
-      fragmentSrc = GratingStim.#SHADERS[shaderName].shader;
-      uniformsFinal = Object.assign(
-        {},
-        GratingStim.#SHADERS[shaderName].uniforms,
-        uniforms,
-      );
-    } else {
-      vertexSrc = defaultQuadVertWGL1;
-      fragmentSrc = GratingStim.#SHADERSWGL1[shaderName].shader;
-      uniformsFinal = Object.assign(
-        {},
-        GratingStim.#SHADERSWGL1[shaderName].uniforms,
-        uniforms,
-      );
-    }
-    const shader = PIXI.Shader.from(vertexSrc, fragmentSrc, uniformsFinal);
-    return new PIXI.Mesh(geometry, shader);
-  }
-
-  /**
-   * Set phase value for the function.
-   *
-   * @param {number} phase - phase value
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setPhase(phase, log = false) {
-    this._setAttribute("phase", phase, log);
-    if (this._pixi instanceof PIXI.Mesh) {
-      this._pixi.shader.uniforms.uPhase = -phase;
-    }
-  }
-
-  /**
-   * Set color space value for the grating stimulus.
-   *
-   * @param {String} colorSpaceVal - color space value
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setColorSpace(colorSpaceVal = "RGB", log = false) {
-    let colorSpaceValU = colorSpaceVal.toUpperCase();
-    if (Color.COLOR_SPACE[colorSpaceValU] === undefined) {
-      colorSpaceValU = "RGB";
-    }
-    const hasChanged = this._setAttribute("colorSpace", colorSpaceValU, log);
-    if (hasChanged) {
-      this.setColor(this._color);
-    }
-  }
-
-  /**
-   * Set foreground color value for the grating stimulus.
-   *
-   * @param {Color} colorVal - color value, can be String like "red" or "#ff0000" or Number like 0xff0000.
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setColor(colorVal = "white", log = false) {
-    const colorObj =
-      colorVal instanceof Color
-        ? colorVal
-        : new Color(colorVal, Color.COLOR_SPACE[this._colorSpace]);
-    this._setAttribute("color", colorObj, log);
-    if (this._pixi instanceof PIXI.Mesh) {
-      this._pixi.shader.uniforms.uColor = colorObj.rgbFull;
-    }
-  }
-
-  /**
-   * Determines how visible the stimulus is relative to background.
-   *
-   * @param {number} [opacity=1] opacity - The value should be a single float ranging 1.0 (opaque) to 0.0 (transparent).
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setOpacity(opacity = 1, log = false) {
-    this._setAttribute("opacity", opacity, log);
-    if (this._pixi instanceof PIXI.Mesh) {
-      this._pixi.shader.uniforms.uAlpha = opacity;
-    }
-  }
-
-  /**
-   * Set spatial frequency value for the function.
-   *
-   * @param {number} sf - spatial frequency value
-   * @param {boolean} [log=false] - whether or not to log
-   */
-  setSF(sf, log = false) {
-    this._setAttribute("SF", sf, log);
-    if (this._pixi instanceof PIXI.Mesh) {
-      this._pixi.shader.uniforms.uFreq = sf;
-    }
-  }
-
-  /**
-   * Set blend mode of the grating stimulus.
-   *
-   * @param {String} blendMode - blend mode, can be one of the following: ["avg", "add", "mul", "screen"].
-   * @param {boolean} [log=false] - whether or not to log
-   */
-  setBlendmode(blendMode = "avg", log = false) {
-    this._setAttribute("blendmode", blendMode, log);
-    if (this._pixi !== undefined) {
-      let pixiBlendMode = GratingStim.#BLEND_MODES_MAP[blendMode];
-      if (pixiBlendMode === undefined) {
-        pixiBlendMode = PIXI.BLEND_MODES.NORMAL;
-      }
-      if (this._pixi.filters) {
-        this._pixi.filters[this._pixi.filters.length - 1].blendMode =
-          pixiBlendMode;
-      } else {
-        this._pixi.blendMode = pixiBlendMode;
-      }
-    }
-  }
-
-  /**
-   * Whether to interpolate (linearly) the texture in the stimulus.
-   *
-   * @param {boolean} interpolate - interpolate or not.
-   * @param {boolean} [log=false] - whether or not to log
-   */
-  setInterpolate(interpolate = false, log = false) {
-    this._setAttribute("interpolate", interpolate, log);
-    if (
-      this._pixi instanceof PIXI.Mesh &&
-      this._pixi.shader.uniforms.uTex instanceof PIXI.Texture
-    ) {
-      this._pixi.shader.uniforms.uTex.baseTexture.scaleMode = interpolate
-        ? PIXI.SCALE_MODES.LINEAR
-        : PIXI.SCALE_MODES.NEAREST;
-      this._pixi.shader.uniforms.uTex.baseTexture.update();
-    }
-  }
-
-  /**
-   * Setter for the anchor attribute.
-   *
-   * @param {string} anchor - anchor of the stim
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  setAnchor(anchor = "center", log = false) {
-    this._setAttribute("anchor", anchor, log);
-    if (this._pixi !== undefined) {
-      // Vertices are set directly with origin at [0, 0], centered around it.
-      // Subtracting 0.5 from anchorNum vals to get desired effect.
-      const anchorNum = this._anchorTextToNum(this._anchor);
-      this._pixi.pivot.x =
-        (anchorNum[0] - 0.5) * this._pixi.scale.x * this._pixi.width;
-      this._pixi.pivot.y =
-        (anchorNum[1] - 0.5) * this._pixi.scale.y * this._pixi.height;
-    }
-  }
-
-  /**
-   * Update the stimulus, if necessary.
-   *
-   * @protected
-   */
-  _updateIfNeeded() {
-    if (!this._needUpdate) {
-      return;
-    }
-    this._needUpdate = false;
-
-    // update the PIXI representation, if need be:
-    if (this._needPixiUpdate) {
-      this._needPixiUpdate = false;
-      this._size_px = util.to_px(this._size, this.units, this.win);
-      let shaderName;
-      let shaderUniforms;
-      let currentUniforms = {};
-      if (typeof this._pixi !== "undefined") {
-        if (this._pixi instanceof PIXI.Mesh) {
-          Object.assign(currentUniforms, this._pixi.shader.uniforms);
-        }
-        this._pixi.destroy(true);
-      }
-      this._pixi = undefined;
-
-      // no image to draw: return immediately
-      if (typeof this._tex === "undefined") {
-        return;
-      }
-
-      if (this._tex instanceof HTMLImageElement) {
-        // Not using PIXI.Texture.from() on purpose, as it caches both PIXI.Texture and PIXI.BaseTexture.
-        // As a result of that we can have multiple GratingStim instances using same PIXI.BaseTexture,
-        // thus changing texture related properties like interpolation, or calling _pixi.destroy(true)
-        // will affect all GratingStims who happen to share that BaseTexture.
-        shaderName = "imageShader";
-        let shaderTex = new PIXI.Texture(
-          new PIXI.BaseTexture(this._tex, {
-            wrapMode: PIXI.WRAP_MODES.REPEAT,
-            scaleMode: this._interpolate
-              ? PIXI.SCALE_MODES.LINEAR
-              : PIXI.SCALE_MODES.NEAREST,
-          }),
-        );
-        shaderUniforms = {
-          uTex: shaderTex,
-          uFreq: this._SF,
-          uPhase: this._phase,
-          uColor: this._color.rgbFull,
-        };
-      } else {
-        shaderName = this._tex;
-        shaderUniforms = {
-          uFreq: this._SF,
-          uPhase: this._phase,
-          uColor: this._color.rgbFull,
-        };
-      }
-      this._pixi = this._getPixiMeshFromPredefinedShaders(
-        shaderName,
-        Object.assign(shaderUniforms, currentUniforms),
-      );
-      this._pixi.filters = [this._adjustmentFilter];
-
-      // add a mask if need be:
-      if (typeof this._mask !== "undefined") {
-        if (this._mask instanceof HTMLImageElement) {
-          // Building new PIXI.BaseTexture each time we create a mask. See notes on shader texture creation above.
-          this._pixi.mask = PIXI.Sprite.from(
-            new PIXI.Texture(new PIXI.BaseTexture(this._mask)),
-          );
-          this._pixi.mask.width = this._size_px[0];
-          this._pixi.mask.height = this._size_px[1];
-          this._pixi.addChild(this._pixi.mask);
-        } else {
-          const maskMesh = this._getPixiMeshFromPredefinedShaders(this._mask);
-
-          // Since maskMesh is centered around (0, 0) (has vertices going around it),
-          // offsetting maskMesh position to properly cover render target texture,
-          // which created with top-left corner at (0, 0).
-          maskMesh.position.set(this._size_px[0] * 0.5, this._size_px[1] * 0.5);
-
-          // For some reason setting PIXI.Mesh as .mask doesn't do anything,
-          // rendering mask to texture for further use.
-          const rt = PIXI.RenderTexture.create({
-            width: this._size_px[0],
-            height: this._size_px[1],
-            scaleMode: this._interpolate
-              ? PIXI.SCALE_MODES.LINEAR
-              : PIXI.SCALE_MODES.NEAREST,
-          });
-          this.win._renderer.render(maskMesh, {
-            renderTexture: rt,
-          });
-          const maskSprite = new PIXI.Sprite.from(rt);
-          this._pixi.mask = maskSprite;
-          this._pixi.addChild(maskSprite);
-        }
-        // Since grating mesh is centered around (0, 0), setting mask's anchor to center to properly cover target image.
-        this._pixi.mask.anchor.set(0.5);
-      }
-
-      // since _pixi.width may not be immediately available but the rest of the code needs its value
-      // we arrange for repeated calls to _updateIfNeeded until we have a width:
-      if (this._pixi.width === 0) {
-        this._needUpdate = true;
-        this._needPixiUpdate = true;
-        return;
-      }
-    }
-
-    this._pixi.zIndex = -this._depth;
-    this.opacity = this._opacity;
-    this.anchor = this._anchor;
-
-    // set the scale:
-    this._pixi.scale.x = 1;
-    this._pixi.scale.y = -1;
-
-    let pos = to_pixiPoint(this.pos, this.units, this.win);
-    this._pixi.position.set(pos.x, pos.y);
-    this._pixi.rotation = (-this.ori * Math.PI) / 180;
-
-    // re-estimate the bounding box, as the texture's width may now be available:
-    this._estimateBoundingBox();
   }
 }

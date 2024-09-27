@@ -24,6 +24,37 @@ export let WindowMixin = (superclass) =>
     }
 
     /**
+     * Convert the given length from stimulus units to pixel units
+     *
+     * @name module:core.WindowMixin#_getHorLengthPix
+     * @function
+     * @protected
+     * @param {number} length - the length in stimulus units
+     * @return {number} - the length in pixels
+     */
+    _getHorLengthPix(length) {
+      let response = {
+        context: "when converting a length from stimulus units to pixel units",
+        origin: "WindowMixin._getHorLengthPix",
+      };
+
+      if (this._units === "pix") {
+        return length;
+      } else if (typeof this._units === "undefined" || this._units === "norm") {
+        var winSize = this.win.size;
+        return (length * winSize[0]) / 2;
+      } else if (this._units === "height") {
+        const minSize = Math.min(this.win.size[0], this.win.size[1]);
+        return length * minSize;
+      } else {
+        // throw { ...response, error: 'unable to deal with unit: ' + this._units };
+        throw Object.assign(response, {
+          error: "unable to deal with unit: " + this._units,
+        });
+      }
+    }
+
+    /**
      * Convert the given length from stimulus unit to pixel units.
      *
      * @name module:core.WindowMixin#_getLengthPix
@@ -35,8 +66,8 @@ export let WindowMixin = (superclass) =>
      */
     _getLengthPix(length, integerCoordinates = false) {
       let response = {
-        origin: "WindowMixin._getLengthPix",
         context: "when converting a length from stimulus unit to pixel units",
+        origin: "WindowMixin._getLengthPix",
       };
 
       let length_px;
@@ -74,8 +105,8 @@ export let WindowMixin = (superclass) =>
      */
     _getLengthUnits(length_px) {
       let response = {
-        origin: "WindowMixin._getLengthUnits",
         context: "when converting a length from pixel unit to stimulus units",
+        origin: "WindowMixin._getLengthUnits",
       };
 
       if (this._units === "pix") {
@@ -95,37 +126,6 @@ export let WindowMixin = (superclass) =>
     }
 
     /**
-     * Convert the given length from stimulus units to pixel units
-     *
-     * @name module:core.WindowMixin#_getHorLengthPix
-     * @function
-     * @protected
-     * @param {number} length - the length in stimulus units
-     * @return {number} - the length in pixels
-     */
-    _getHorLengthPix(length) {
-      let response = {
-        origin: "WindowMixin._getHorLengthPix",
-        context: "when converting a length from stimulus units to pixel units",
-      };
-
-      if (this._units === "pix") {
-        return length;
-      } else if (typeof this._units === "undefined" || this._units === "norm") {
-        var winSize = this.win.size;
-        return (length * winSize[0]) / 2;
-      } else if (this._units === "height") {
-        const minSize = Math.min(this.win.size[0], this.win.size[1]);
-        return length * minSize;
-      } else {
-        // throw { ...response, error: 'unable to deal with unit: ' + this._units };
-        throw Object.assign(response, {
-          error: "unable to deal with unit: " + this._units,
-        });
-      }
-    }
-
-    /**
      * Convert the given length from pixel units to the stimulus units
      *
      * @name module:core.WindowMixin#_getVerLengthPix
@@ -136,8 +136,8 @@ export let WindowMixin = (superclass) =>
      */
     _getVerLengthPix(length) {
       let response = {
-        origin: "WindowMixin._getVerLengthPix",
         context: "when converting a length from pixel unit to stimulus units",
+        origin: "WindowMixin._getVerLengthPix",
       };
 
       if (this._units === "pix") {

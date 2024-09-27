@@ -7,20 +7,20 @@
  */
 
 import * as PIXI from "pixi.js-legacy";
-import { VisualStim } from "./VisualStim.js";
-import * as util from "../util/Util.js";
-import { Clock } from "../util/Clock.js";
-import { ExperimentHandler } from "../data/ExperimentHandler.js";
 
+import { ExperimentHandler } from "../data/ExperimentHandler.js";
+import { Clock } from "../util/Clock.js";
+import * as util from "../util/Util.js";
+import DropdownExtensions from "./survey/components/DropdownExtensions.js";
+import MatrixBipolar from "./survey/components/MatrixBipolar.js";
+import customExpressionFunctionsArray from "./survey/extensions/customExpressionFunctions.js";
+import registerMaxDiffMatrix from "./survey/widgets/MaxDiffMatrix.js";
+import { VisualStim } from "./VisualStim.js";
 // PsychoJS SurveyJS extensions:
 import registerSelectBoxWidget from "./survey/widgets/SelectBox.js";
-import registerSliderWidget from "./survey/widgets/SliderWidget.js";
 import registerSideBySideMatrix from "./survey/widgets/SideBySideMatrix.js";
-import registerMaxDiffMatrix from "./survey/widgets/MaxDiffMatrix.js";
 import registerSliderStar from "./survey/widgets/SliderStar.js";
-import MatrixBipolar from "./survey/components/MatrixBipolar.js";
-import DropdownExtensions from "./survey/components/DropdownExtensions.js";
-import customExpressionFunctionsArray from "./survey/extensions/customExpressionFunctions.js";
+import registerSliderWidget from "./survey/widgets/SliderWidget.js";
 
 /**
  * Survey Stimulus.
@@ -28,6 +28,21 @@ import customExpressionFunctionsArray from "./survey/extensions/customExpression
  * @extends VisualStim
  */
 export class Survey extends VisualStim {
+  static CAPTIONS = {
+    NEXT: "Next",
+  };
+
+  static NODE_EXIT_CODES = {
+    BREAK_FLOW: 1,
+    NORMAL: 0,
+  };
+
+  static SURVEY_COMPLETION_CODES = {
+    NORMAL: 0,
+    SKIP_TO_END_OF_BLOCK: 1,
+    SKIP_TO_END_OF_SURVEY: 2,
+  };
+
   static SURVEY_EXPERIMENT_PARAMETERS = [
     "surveyId",
     "showStartDialog",
@@ -38,27 +53,12 @@ export class Survey extends VisualStim {
   ];
 
   static SURVEY_FLOW_PLAYBACK_TYPES = {
-    DIRECT: "QUESTION_BLOCK",
     CONDITIONAL: "IF_THEN_ELSE_GROUP",
+    DIRECT: "QUESTION_BLOCK",
     EMBEDDED_DATA: "VARIABLES",
+    ENDSURVEY: "END",
     RANDOMIZER: "RANDOM_GROUP",
     SEQUENTIAL: "SEQUENTIAL_GROUP",
-    ENDSURVEY: "END",
-  };
-
-  static CAPTIONS = {
-    NEXT: "Next",
-  };
-
-  static SURVEY_COMPLETION_CODES = {
-    NORMAL: 0,
-    SKIP_TO_END_OF_BLOCK: 1,
-    SKIP_TO_END_OF_SURVEY: 2,
-  };
-
-  static NODE_EXIT_CODES = {
-    NORMAL: 0,
-    BREAK_FLOW: 1,
   };
 
   /**
@@ -77,19 +77,19 @@ export class Survey extends VisualStim {
    * @param {boolean} [options.autoLog= false] - whether to log
    */
   constructor({
-    name,
-    win,
-    model,
-    surveyId,
-    pos,
-    units,
-    ori,
-    size,
-    depth,
     autoDraw,
     autoLog,
+    depth,
+    model,
+    name,
+    ori,
+    pos,
+    size,
+    surveyId,
+    units,
+    win,
   } = {}) {
-    super({ name, win, units, ori, depth, pos, size, autoDraw, autoLog });
+    super({ autoDraw, autoLog, depth, name, ori, pos, size, units, win });
 
     // Storing all existing signaturePad questions to properly handle their resize.
     // Unfortunately signaturepad question type can't handle resizing properly by itself.
@@ -154,543 +154,8 @@ export class Survey extends VisualStim {
     return this.isFinished && this._isCompletedAll;
   }
 
-  /**
-   * Setter for the model attribute.
-   *
-   * @param {Object | string} model - the survey model
-   * @param {boolean} [log= false] - whether to log
-   * @return {void}
-   */
-  setModel(model, log = false) {
-    const response = {
-      origin: "Survey.setModel",
-      context: `when setting the model of Survey: ${this._name}`,
-    };
-
-    try {
-      // model is undefined: that's fine, but we raise a warning in case this is a symptom of an actual problem
-      if (typeof model === "undefined") {
-        this.psychoJS.logger.warn(
-          `setting the model of Survey: ${this._name} with argument: undefined.`,
-        );
-        this.psychoJS.logger.debug(
-          `set the model of Survey: ${this._name} as: undefined`,
-        );
-      } else {
-        // model is a string: it should be the name of a resource, which we load
-        if (typeof model === "string") {
-          const encodedModel = this.psychoJS.serverManager.getResource(model);
-          const decodedModel = new TextDecoder("utf-8").decode(encodedModel);
-          model = JSON.parse(decodedModel);
-        }
-
-        // model should now be an object:
-        if (typeof model !== "object") {
-          throw "model is neither the name of a resource nor an object";
-        }
-
-        // if model is a straight-forward SurveyJS model, instead of a Pavlovia Survey super-flow model,
-        // convert it:
-        if (!("surveyFlow" in model)) {
-          model = {
-            surveys: [model],
-            embeddedData: [],
-            // surveysMap: {},
-            // questionMapsBySurvey: {},
-            surveyFlow: {
-              name: "root",
-              type: "SEQUENTIAL_GROUP",
-              nodes: [
-                {
-                  type: "QUESTION_BLOCK",
-                  surveyIdx: 0,
-                },
-              ],
-            },
-
-            surveySettings: { showPrevButton: false },
-
-            // surveyRunLogic: {},
-            inQuestionRandomization: {},
-            questionsOrderRandomization: [],
-            questionSkipLogic: {},
-
-            questionsConverted: -1,
-            questionsTotal: -1,
-            logs: [],
-          };
-
-          this.psychoJS.logger.debug(
-            `converted the legacy model to the new super-flow model: ${JSON.stringify(model)}`,
-          );
-        }
-
-        // mark the root (top-most) node:
-        model.surveyFlow.isRootNode = true;
-
-        this._surveyData = model;
-
-        // augment the question names with block names:
-        this._augmentQuestionNames();
-
-        this._setAttribute("model", model, log);
-        this._onChange(true, true)();
-      }
-    } catch (error) {
-      throw { ...response, error };
-    }
-  }
-
-  /**
-   * Setter for the surveyId attribute.
-   *
-   * @param {string} surveyId - the survey Id
-   * @param {boolean} [log= false] - whether to log
-   * @return {void}
-   */
-  setSurveyId(surveyId, log = false) {
-    this._setAttribute("surveyId", surveyId, log);
-
-    // only update the model if a genuine surveyId was given as parameter to the Survey:
-    if (!this._hasSelfGeneratedSurveyId) {
-      this.setModel(`${surveyId}.sid`, log);
-    }
-  }
-
-  /**
-   * Set survey variables.
-   *
-   * @param {Object} variables - an object with a number of variable name/variable value pairs
-   * @param {string[]} [excludedNames={}] - excluded variable names
-   * @return {void}
-   */
-  setVariables(variables, excludedNames) {
-    // filter the variables and set them:
-    // const filteredVariables = {};
-    // for (const name in variables)
-    // {
-    // 	if (excludedNames.indexOf(name) === -1)
-    // 	{
-    // 		filteredVariables[name] = variables[name];
-    // 		this._surveyModel.setVariable(name, variables[name]);
-    // 	}
-    // }
-
-    // // set the values:
-    // this._surveyModel.mergeData(filteredVariables);
-
-    for (const name in variables) {
-      if (excludedNames.indexOf(name) === -1) {
-        this._variables[name] = variables[name];
-        // this._surveyData.variables[name] = variables[name];
-      }
-    }
-  }
-
-  /**
-   * Evaluate an expression, taking into account the survey responses.
-   *
-   * @param {string} expression - the expression to evaluate
-   * @returns {any} the evaluated expression
-   */
-  evaluateExpression(expression) {
-    if (
-      typeof expression === "undefined" ||
-      typeof this._surveyJSModel === "undefined"
-    ) {
-      return undefined;
-    }
-
-    // modify the expression when it is a simple URL, without variables
-    // i.e. when there is no quote and no brackets
-    if (expression.indexOf("'") === -1 && expression.indexOf("{") === -1) {
-      expression = `'${expression}'`;
-    }
-
-    return this._surveyJSModel.runExpression(expression);
-  }
-
-  /**
-   * Add a callback that will be triggered when the participant finishes the survey.
-   *
-   * @param callback - callback triggered when the participant finishes the survey
-   * @return {void}
-   */
-  onFinished(callback) {
-    if (typeof this._surveyData === "undefined") {
-      throw {
-        origin: "Survey.onFinished",
-        context:
-          "when setting a callback triggered when the participant finishes the survey",
-        error: "the survey does not have a model",
-      };
-    }
-
-    // note: we cannot simply add the callback to surveyModel.onComplete since we first need
-    // to run _onSurveyComplete in order to collect data, estimate whether the survey is complete, etc.
-    if (typeof callback === "function") {
-      this._onFinishedCallback = callback;
-    }
-    // this._surveyModel.onComplete.add(callback);
-  }
-
-  /**
-   * Get the survey response.
-   */
-  getResponse() {
-    // if (typeof this._surveyModel === "undefined")
-    // {
-    // 	return {};
-    // }
-
-    // return this._surveyModel.data;
-
-    return this._overallSurveyResults;
-  }
-
-  /**
-   * Upload the survey response to the pavlovia.org server.
-   *
-   * @returns {Promise<ServerManager.UploadDataPromise>} a promise resolved when the survey response
-   * 	has been saved
-   */
-  save() {
-    this._psychoJS.logger.info("[PsychoJS] Save survey response.");
-
-    // get the survey response and complement it with experimentInfo fields:
-    const response = this.getResponse();
-    for (const field in this.psychoJS.experiment.extraInfo) {
-      if (Survey.SURVEY_EXPERIMENT_PARAMETERS.indexOf(field) === -1) {
-        response[field] = this.psychoJS.experiment.extraInfo[field];
-      }
-    }
-
-    // add timing information:
-    for (const question in this._questionAnswerTimestamps) {
-      response[`${question}_rt`] =
-        this._questionAnswerTimestamps[question].timestamp;
-    }
-
-    // sort the questions and question response times alphabetically:
-    const sortedResponses = Object.keys(response)
-      .sort()
-      .reduce((sorted, key) => {
-        sorted[key] = response[key];
-        return sorted;
-      }, {});
-
-    // if the response cannot be uploaded, e.g. the experiment is running locally, or
-    // if it is piloting mode, then we offer the response as a file for download:
-    if (
-      this._psychoJS.getEnvironment() !==
-        ExperimentHandler.Environment.SERVER ||
-      this._psychoJS.config.experiment.status !== "RUNNING" ||
-      this._psychoJS._serverMsg.has("__pilotToken")
-    ) {
-      const filename = `survey_${this._surveyId}.json`;
-      const blob = new Blob([JSON.stringify(sortedResponses)], {
-        type: "application/json",
-      });
-
-      const anchor = document.createElement("a");
-      anchor.href = window.URL.createObjectURL(blob);
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-
-      return Promise.resolve({});
-    }
-
-    // otherwise, we do upload the survey response
-    // note: if the surveyId was self-generated instead of being a parameter of the constructor,
-    // we need to also upload the survey model, as a new survey might need to be created on the fly
-    // by the server for this experiment.
-    if (!this._hasSelfGeneratedSurveyId) {
-      return this._psychoJS.serverManager.uploadSurveyResponse(
-        this._surveyId,
-        sortedResponses,
-        this.isCompleted,
-      );
-    } else {
-      return this._psychoJS.serverManager.uploadSurveyResponse(
-        this._surveyId,
-        sortedResponses,
-        this.isCompleted,
-        this._surveyData,
-      );
-    }
-  }
-
-  /**
-   * Hide this stimulus on the next frame draw.
-   *
-   * @override
-   * @note We over-ride MinimalStim.hide such that we can remove the survey DOM element
-   */
-  hide() {
-    const surveyDiv = document.getElementById(this._surveyDivId);
-    if (surveyDiv !== null) {
-      document.body.removeChild(surveyDiv);
-    }
-
-    super.hide();
-  }
-
-  /**
-   * Estimate the bounding box.
-   *
-   * @override
-   * @protected
-   */
-  _estimateBoundingBox() {
-    this._boundingBox = new PIXI.Rectangle(
-      this._pos[0] - this._size[0] / 2,
-      this._pos[1] - this._size[1] / 2,
-      this._size[0],
-      this._size[1],
-    );
-
-    // TODO take the orientation into account
-  }
-
-  /**
-   * Update the stimulus, if necessary.
-   *
-   * @protected
-   */
-  _updateIfNeeded() {
-    if (!this._needUpdate) {
-      return;
-    }
-    this._needUpdate = false;
-
-    // update the PIXI representation, if need be:
-    if (this._needPixiUpdate) {
-      this._needPixiUpdate = false;
-
-      // if a survey div does not exist, create it:
-      if (document.getElementById(this._surveyDivId) === null) {
-        document.body.insertAdjacentHTML(
-          "beforeend",
-          `<div id=${this._surveyDivId} class='survey'></div>`,
-        );
-      }
-
-      // start the survey flow:
-      if (typeof this._surveyData !== "undefined") {
-        this._runSurveyFlow(this._surveyData.surveyFlow, this._surveyData);
-      }
-    }
-
-    // TODO change the position, scale, anchor, z-index, etc.
-    // TODO update the size, taking into account the actual size of the survey
-    /*
-		this._pixi.zIndex = -this._depth;
-		this._pixi.alpha = this.opacity;
-
-		// set the scale:
-		const displaySize = this._getDisplaySize();
-		const size_px = util.to_px(displaySize, this.units, this.win);
-		const scaleX = size_px[0] / this._texture.width;
-		const scaleY = size_px[1] / this._texture.height;
-		this._pixi.scale.x = this.flipHoriz ? -scaleX : scaleX;
-		this._pixi.scale.y = this.flipVert ? scaleY : -scaleY;
-
-		// set the position, rotation, and anchor (image centered on pos):
-		this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
-		this._pixi.rotation = -this.ori * Math.PI / 180;
-		this._pixi.anchor.x = 0.5;
-		this._pixi.anchor.y = 0.5;
-*/
-  }
-
-  /**
-   * Register custom SurveyJS expression functions.
-   *
-   * @protected
-   * @return {void}
-   */
-  _registerCustomExpressionFunctions(Survey, customFuncs = []) {
-    for (let i = 0; i < customFuncs.length; i++) {
-      Survey.FunctionFactory.Instance.register(
-        customFuncs[i].func.name,
-        customFuncs[i].func,
-        customFuncs[i].isAsync,
-      );
-    }
-  }
-
-  /**
-   * Register SurveyJS widgets.
-   *
-   * @protected
-   * @return {void}
-   */
-  _registerWidgets(Survey) {
-    registerSelectBoxWidget(Survey);
-    registerSliderWidget(Survey);
-    registerSideBySideMatrix(Survey);
-    registerMaxDiffMatrix(Survey);
-    registerSliderStar(Survey);
-
-    // load the widget style:
-    // TODO
-    // util.loadCss("./survey/css/widgets.css");
-  }
-
-  /**
-   * Register custom Survey properties. Usially these are relevant for different question types.
-   *
-   * @protected
-   * @return {void}
-   */
-  _registerCustomSurveyProperties(Survey) {
-    MatrixBipolar.registerSurveyProperties(Survey);
-    Survey.Serializer.addProperty("signaturepad", {
-      name: "maxSignatureWidth",
-      type: "number",
-      default: 500,
-    });
-  }
-
-  _registerCustomComponentCallbacks(surveyModel) {
-    MatrixBipolar.registerModelCallbacks(surveyModel);
-    DropdownExtensions.registerModelCallbacks(surveyModel);
-  }
-
-  /**
-   * Callback triggered whenever the participant answer a question.
-   *
-   * @param survey
-   * @param questionData
-   * @protected
-   */
-  _onQuestionValueChanged(survey, questionData) {
-    if (
-      typeof this._questionAnswerTimestamps[questionData.name] === "undefined"
-    ) {
-      this._questionAnswerTimestamps[questionData.name] = {
-        timestamp: 0,
-      };
-    }
-    this._questionAnswerTimestamps[questionData.name].timestamp =
-      this._questionAnswerTimestampClock.getTime();
-  }
-
-  /*
-	// This probably needs to be moved to some kind of utils.js.
-	// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
-	_FisherYatesShuffle (targetArray = [])
-	{
-		// Copying array to preserve initial data.
-		const out = Array.from(targetArray);
-		const len = targetArray.length;
-		let i, j, k;
-		for (i = len - 1; i >= 1; i--)
-		{
-			j = Math.floor(Math.random() * (i + 1));
-			k = out[j];
-			out[j] = out[i];
-			out[i] = k;
-		}
-
-		return out;
-	}
-
-	// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
-	_InPlaceFisherYatesShuffle (inOutArray = [], startIdx, endIdx)
-	{
-		// Shuffling right in the input array.
-		let i, j, k;
-		for (i = endIdx; i >= startIdx; i--)
-		{
-			j = Math.floor(Math.random() * (i + 1));
-			k = inOutArray[j];
-			inOutArray[j] = inOutArray[i];
-			inOutArray[i] = k;
-		}
-
-		return inOutArray;
-	}
-*/
-
-  _composeModelWithRandomizedQuestions(
-    surveyModel,
-    inBlockRandomizationSettings,
-  ) {
-    let t = performance.now();
-    // Qualtrics's in-block randomization ignores presense of page breaks within the block.
-    // Hence creating a fresh survey data object with shuffled question order.
-    let questions = [];
-    let questionsMap = {};
-    let newSurveyModel = {
-      pages: [
-        { elements: new Array(inBlockRandomizationSettings.questionsPerPage) },
-      ],
-    };
-    for (let i = 0; i < surveyModel.pages.length; i++) {
-      for (let j = 0; j < surveyModel.pages[i].elements.length; j++) {
-        questions.push(surveyModel.pages[i].elements[j]);
-        const k = questions.length - 1;
-        questionsMap[questions[k].name] = questions[k];
-      }
-    }
-
-    if (inBlockRandomizationSettings.layout.length > 0) {
-      let j = 0;
-      let k = 0;
-      let curPage = 0;
-      let curElement = 0;
-
-      const shuffledSet0 = util.shuffle(
-        Array.from(inBlockRandomizationSettings.set0),
-      );
-      const shuffledSet1 = util.shuffle(
-        Array.from(inBlockRandomizationSettings.set1),
-      );
-      // const shuffledSet0 = this._FisherYatesShuffle(inBlockRandomizationSettings.set0);
-      // const shuffledSet1 = this._FisherYatesShuffle(inBlockRandomizationSettings.set1);
-      for (let i = 0; i < inBlockRandomizationSettings.layout.length; i++) {
-        // Create new page if questionsPerPage reached.
-        if (curElement === inBlockRandomizationSettings.questionsPerPage) {
-          newSurveyModel.pages.push({
-            elements: new Array(inBlockRandomizationSettings.questionsPerPage),
-          });
-          curPage++;
-          curElement = 0;
-        }
-
-        if (inBlockRandomizationSettings.layout[i] === "set0") {
-          newSurveyModel.pages[curPage].elements[curElement] =
-            questionsMap[shuffledSet0[j]];
-          j++;
-        } else if (inBlockRandomizationSettings.layout[i] === "set1") {
-          newSurveyModel.pages[curPage].elements[curElement] =
-            questionsMap[shuffledSet1[k]];
-          k++;
-        } else {
-          newSurveyModel.pages[curPage].elements[curElement] =
-            questionsMap[inBlockRandomizationSettings.layout[i]];
-        }
-        curElement++;
-      }
-    } else if (inBlockRandomizationSettings.showOnly > 0) {
-      // TODO: Check if there can be questionsPerPage applicable in this case.
-      const shuffledQuestions = util.shuffle(Array.from(questions));
-      // shuffledQuestions = this._FisherYatesShuffle(questions);
-      newSurveyModel.pages[0].elements = shuffledQuestions.splice(
-        0,
-        inBlockRandomizationSettings.showOnly,
-      );
-    } else {
-      // TODO: Check if there can be questionsPerPage applicable in this case.
-      newSurveyModel.pages[0].elements = util.shuffle(Array.from(questions));
-      // newSurveyModel.pages[0].elements = this._FisherYatesShuffle(questions);
-    }
-    console.log("model recomposition took", performance.now() - t);
-    console.log("recomposed model:", newSurveyModel);
-    return newSurveyModel;
+  _addEventListeners() {
+    window.addEventListener("resize", (e) => this._handleWindowResize(e));
   }
 
   _applyInQuestionRandomization(
@@ -806,61 +271,183 @@ export class Survey extends VisualStim {
   }
 
   /**
-   * Go over required surveyModelData and apply randomization settings.
+   * Augment the model question names with model names.
+   *
    * @protected
    */
-  _processSurveyData(surveyData, surveyIdx) {
-    let newSurveyModel = undefined;
-
-    // Qualtrics's in-block randomization ignores the presence of page breaks within the block.
-    // Hence creating a fresh survey data object with shuffled question order.
-    if (
-      typeof surveyData.questionsOrderRandomization[surveyIdx] !== "undefined"
-    ) {
-      newSurveyModel = this._composeModelWithRandomizedQuestions(
-        surveyData.surveys[surveyIdx],
-        surveyData.questionsOrderRandomization[surveyIdx],
-      );
+  _augmentQuestionNames() {
+    if (!("surveys" in this._surveyData)) {
+      return;
     }
 
-    // note: we need to check whether the survey model has a "pages" field since empty surveys do not:
-    if ("pages" in surveyData.surveys[surveyIdx]) {
-      // checking whether in-question randomization needs to be applied:
-      for (let i = 0; i < surveyData.surveys[surveyIdx].pages.length; ++i) {
-        for (
-          let j = 0;
-          j < surveyData.surveys[surveyIdx].pages[i].elements.length;
-          ++j
-        ) {
-          if (
-            typeof surveyData.inQuestionRandomization[
-              surveyData.surveys[surveyIdx].pages[i].elements[j].name
-            ] !== "undefined"
-          ) {
-            if (typeof newSurveyModel === "undefined") {
-              // Marking a deep copy of survey model input data, to avoid data loss if randomization returns a subset of choices.
-              // TODO: think of something more optimal.
-              newSurveyModel = JSON.parse(
-                JSON.stringify(surveyData.surveys[surveyIdx]),
-              );
-            }
-            this._applyInQuestionRandomization(
-              newSurveyModel.pages[i].elements[j],
-              surveyData.inQuestionRandomization[
-                newSurveyModel.pages[i].elements[j].name
-              ],
-              surveyData,
-            );
-          }
-        }
+    const surveys = this._surveyData["surveys"];
+    for (const survey of surveys) {
+      if (!("title" in survey) || !("pages" in survey)) {
+        continue;
+      }
+
+      for (const page of survey["pages"]) {
+      }
+    }
+  }
+
+  _composeModelWithRandomizedQuestions(
+    surveyModel,
+    inBlockRandomizationSettings,
+  ) {
+    let t = performance.now();
+    // Qualtrics's in-block randomization ignores presense of page breaks within the block.
+    // Hence creating a fresh survey data object with shuffled question order.
+    let questions = [];
+    let questionsMap = {};
+    let newSurveyModel = {
+      pages: [
+        { elements: new Array(inBlockRandomizationSettings.questionsPerPage) },
+      ],
+    };
+    for (let i = 0; i < surveyModel.pages.length; i++) {
+      for (let j = 0; j < surveyModel.pages[i].elements.length; j++) {
+        questions.push(surveyModel.pages[i].elements[j]);
+        const k = questions.length - 1;
+        questionsMap[questions[k].name] = questions[k];
       }
     }
 
-    if (typeof newSurveyModel === "undefined") {
-      // No changes were made, just return original data.
-      newSurveyModel = surveyData.surveys[surveyIdx];
+    if (inBlockRandomizationSettings.layout.length > 0) {
+      let j = 0;
+      let k = 0;
+      let curPage = 0;
+      let curElement = 0;
+
+      const shuffledSet0 = util.shuffle(
+        Array.from(inBlockRandomizationSettings.set0),
+      );
+      const shuffledSet1 = util.shuffle(
+        Array.from(inBlockRandomizationSettings.set1),
+      );
+      // const shuffledSet0 = this._FisherYatesShuffle(inBlockRandomizationSettings.set0);
+      // const shuffledSet1 = this._FisherYatesShuffle(inBlockRandomizationSettings.set1);
+      for (let i = 0; i < inBlockRandomizationSettings.layout.length; i++) {
+        // Create new page if questionsPerPage reached.
+        if (curElement === inBlockRandomizationSettings.questionsPerPage) {
+          newSurveyModel.pages.push({
+            elements: new Array(inBlockRandomizationSettings.questionsPerPage),
+          });
+          curPage++;
+          curElement = 0;
+        }
+
+        if (inBlockRandomizationSettings.layout[i] === "set0") {
+          newSurveyModel.pages[curPage].elements[curElement] =
+            questionsMap[shuffledSet0[j]];
+          j++;
+        } else if (inBlockRandomizationSettings.layout[i] === "set1") {
+          newSurveyModel.pages[curPage].elements[curElement] =
+            questionsMap[shuffledSet1[k]];
+          k++;
+        } else {
+          newSurveyModel.pages[curPage].elements[curElement] =
+            questionsMap[inBlockRandomizationSettings.layout[i]];
+        }
+        curElement++;
+      }
+    } else if (inBlockRandomizationSettings.showOnly > 0) {
+      // TODO: Check if there can be questionsPerPage applicable in this case.
+      const shuffledQuestions = util.shuffle(Array.from(questions));
+      // shuffledQuestions = this._FisherYatesShuffle(questions);
+      newSurveyModel.pages[0].elements = shuffledQuestions.splice(
+        0,
+        inBlockRandomizationSettings.showOnly,
+      );
+    } else {
+      // TODO: Check if there can be questionsPerPage applicable in this case.
+      newSurveyModel.pages[0].elements = util.shuffle(Array.from(questions));
+      // newSurveyModel.pages[0].elements = this._FisherYatesShuffle(questions);
     }
+    console.log("model recomposition took", performance.now() - t);
+    console.log("recomposed model:", newSurveyModel);
     return newSurveyModel;
+  }
+
+  /**
+   * Estimate the bounding box.
+   *
+   * @override
+   * @protected
+   */
+  _estimateBoundingBox() {
+    this._boundingBox = new PIXI.Rectangle(
+      this._pos[0] - this._size[0] / 2,
+      this._pos[1] - this._size[1] / 2,
+      this._size[0],
+      this._size[1],
+    );
+
+    // TODO take the orientation into account
+  }
+
+  _handleAfterQuestionRender(sender, options) {
+    if (options.question.getType() === "signaturepad") {
+      this._signaturePads.push(options);
+      options.question.signatureWidth = Math.min(
+        options.question.maxSignatureWidth,
+        options.htmlElement.getBoundingClientRect().width,
+      );
+    }
+  }
+
+  _handleWindowResize(e) {
+    if (this._surveyJSModel) {
+      for (let i = this._signaturePads.length - 1; i >= 0; i--) {
+        // As of writing this (24.03.2023). SurveyJS doesn't have a proper event
+        // for question being removed from nested locations, such as dynamic panel.
+        // However, surveyJS will set .signaturePad property to null once the question is removed.
+        // Utilising this knowledge to sync our lists.
+        if (this._signaturePads[i].question.signaturePad) {
+          this._signaturePads[i].question.signatureWidth = Math.min(
+            this._signaturePads[i].question.maxSignatureWidth,
+            this._signaturePads[i].htmlElement.getBoundingClientRect().width,
+          );
+        } else {
+          // Signature pad was removed. Syncing list.
+          this._signaturePads.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  /**
+   * Init the SurveyJS.io library and various extensions, setup the theme.
+   *
+   * @protected
+   */
+  _initSurveyJS() {
+    // note: the Survey.js libraries must be added to the list of resources in PsychoJS.start:
+    // psychoJS.start({ resources: [ {'surveyLibrary': true}, ... ], ...});
+
+    // id of the SurveyJS html div:
+    this._surveyDivId = `survey-${this._name}`;
+
+    this._registerCustomExpressionFunctions(
+      window.Survey,
+      customExpressionFunctionsArray,
+    );
+    this._registerWidgets(window.Survey);
+    this._registerCustomSurveyProperties(window.Survey);
+    this._addEventListeners();
+    this._expressionsRunner = new window.Survey.ExpressionRunner();
+
+    // setup the survey theme:
+    window.Survey.Serializer.getProperty(
+      "expression",
+      "minWidth",
+    ).defaultValue = "100px";
+    window.Survey.settings.minWidth = "100px";
+    window.Survey.StylesManager.applyTheme("defaultV2");
+
+    // load the desired style:
+    // TODO
+    // util.loadCss("./survey/css/grey_style.css");
   }
 
   /**
@@ -919,6 +506,35 @@ export class Survey extends VisualStim {
         }
       }
     }
+  }
+
+  /**
+   * Callback triggered when we have run through the whole flow.
+   *
+   * @protected
+   */
+  _onFlowComplete() {
+    this.isFinished = true;
+    this._onFinishedCallback();
+  }
+
+  /**
+   * Callback triggered whenever the participant answer a question.
+   *
+   * @param survey
+   * @param questionData
+   * @protected
+   */
+  _onQuestionValueChanged(survey, questionData) {
+    if (
+      typeof this._questionAnswerTimestamps[questionData.name] === "undefined"
+    ) {
+      this._questionAnswerTimestamps[questionData.name] = {
+        timestamp: 0,
+      };
+    }
+    this._questionAnswerTimestamps[questionData.name].timestamp =
+      this._questionAnswerTimestampClock.getTime();
   }
 
   /**
@@ -987,19 +603,162 @@ export class Survey extends VisualStim {
     this._surveyRunningPromiseResolve(completionCode);
   }
 
-  /**
-   * Callback triggered when we have run through the whole flow.
-   *
-   * @protected
-   */
-  _onFlowComplete() {
-    this.isFinished = true;
-    this._onFinishedCallback();
-  }
-
   _onTextMarkdown(survey, options) {
     // TODO add sanitization / checks if required.
     options.html = options.text;
+  }
+
+  /**
+   * Go over required surveyModelData and apply randomization settings.
+   * @protected
+   */
+  _processSurveyData(surveyData, surveyIdx) {
+    let newSurveyModel = undefined;
+
+    // Qualtrics's in-block randomization ignores the presence of page breaks within the block.
+    // Hence creating a fresh survey data object with shuffled question order.
+    if (
+      typeof surveyData.questionsOrderRandomization[surveyIdx] !== "undefined"
+    ) {
+      newSurveyModel = this._composeModelWithRandomizedQuestions(
+        surveyData.surveys[surveyIdx],
+        surveyData.questionsOrderRandomization[surveyIdx],
+      );
+    }
+
+    // note: we need to check whether the survey model has a "pages" field since empty surveys do not:
+    if ("pages" in surveyData.surveys[surveyIdx]) {
+      // checking whether in-question randomization needs to be applied:
+      for (let i = 0; i < surveyData.surveys[surveyIdx].pages.length; ++i) {
+        for (
+          let j = 0;
+          j < surveyData.surveys[surveyIdx].pages[i].elements.length;
+          ++j
+        ) {
+          if (
+            typeof surveyData.inQuestionRandomization[
+              surveyData.surveys[surveyIdx].pages[i].elements[j].name
+            ] !== "undefined"
+          ) {
+            if (typeof newSurveyModel === "undefined") {
+              // Marking a deep copy of survey model input data, to avoid data loss if randomization returns a subset of choices.
+              // TODO: think of something more optimal.
+              newSurveyModel = JSON.parse(
+                JSON.stringify(surveyData.surveys[surveyIdx]),
+              );
+            }
+            this._applyInQuestionRandomization(
+              newSurveyModel.pages[i].elements[j],
+              surveyData.inQuestionRandomization[
+                newSurveyModel.pages[i].elements[j].name
+              ],
+              surveyData,
+            );
+          }
+        }
+      }
+    }
+
+    if (typeof newSurveyModel === "undefined") {
+      // No changes were made, just return original data.
+      newSurveyModel = surveyData.surveys[surveyIdx];
+    }
+    return newSurveyModel;
+  }
+
+  _registerCustomComponentCallbacks(surveyModel) {
+    MatrixBipolar.registerModelCallbacks(surveyModel);
+    DropdownExtensions.registerModelCallbacks(surveyModel);
+  }
+
+  /*
+	// This probably needs to be moved to some kind of utils.js.
+	// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
+	_FisherYatesShuffle (targetArray = [])
+	{
+		// Copying array to preserve initial data.
+		const out = Array.from(targetArray);
+		const len = targetArray.length;
+		let i, j, k;
+		for (i = len - 1; i >= 1; i--)
+		{
+			j = Math.floor(Math.random() * (i + 1));
+			k = out[j];
+			out[j] = out[i];
+			out[i] = k;
+		}
+
+		return out;
+	}
+
+	// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
+	_InPlaceFisherYatesShuffle (inOutArray = [], startIdx, endIdx)
+	{
+		// Shuffling right in the input array.
+		let i, j, k;
+		for (i = endIdx; i >= startIdx; i--)
+		{
+			j = Math.floor(Math.random() * (i + 1));
+			k = inOutArray[j];
+			inOutArray[j] = inOutArray[i];
+			inOutArray[i] = k;
+		}
+
+		return inOutArray;
+	}
+*/
+
+  /**
+   * Register custom SurveyJS expression functions.
+   *
+   * @protected
+   * @return {void}
+   */
+  _registerCustomExpressionFunctions(Survey, customFuncs = []) {
+    for (let i = 0; i < customFuncs.length; i++) {
+      Survey.FunctionFactory.Instance.register(
+        customFuncs[i].func.name,
+        customFuncs[i].func,
+        customFuncs[i].isAsync,
+      );
+    }
+  }
+
+  /**
+   * Register custom Survey properties. Usially these are relevant for different question types.
+   *
+   * @protected
+   * @return {void}
+   */
+  _registerCustomSurveyProperties(Survey) {
+    MatrixBipolar.registerSurveyProperties(Survey);
+    Survey.Serializer.addProperty("signaturepad", {
+      default: 500,
+      name: "maxSignatureWidth",
+      type: "number",
+    });
+  }
+
+  /**
+   * Register SurveyJS widgets.
+   *
+   * @protected
+   * @return {void}
+   */
+  _registerWidgets(Survey) {
+    registerSelectBoxWidget(Survey);
+    registerSliderWidget(Survey);
+    registerSideBySideMatrix(Survey);
+    registerMaxDiffMatrix(Survey);
+    registerSliderStar(Survey);
+
+    // load the widget style:
+    // TODO
+    // util.loadCss("./survey/css/widgets.css");
+  }
+
+  _resetState() {
+    this._lastPageSwitchHandledIdx = -1;
   }
 
   /**
@@ -1044,9 +803,9 @@ export class Survey extends VisualStim {
         ? this._surveyJSModel.pageNextText || Survey.CAPTIONS.NEXT
         : undefined;
     jQuery(".survey").Survey({
+      completeText,
       model: this._surveyJSModel,
       showItemsInOrder: "column",
-      completeText,
       ...surveyData.surveySettings,
     });
 
@@ -1172,95 +931,336 @@ export class Survey extends VisualStim {
     return nodeExitCode;
   }
 
-  _resetState() {
-    this._lastPageSwitchHandledIdx = -1;
-  }
+  /**
+   * Update the stimulus, if necessary.
+   *
+   * @protected
+   */
+  _updateIfNeeded() {
+    if (!this._needUpdate) {
+      return;
+    }
+    this._needUpdate = false;
 
-  _handleWindowResize(e) {
-    if (this._surveyJSModel) {
-      for (let i = this._signaturePads.length - 1; i >= 0; i--) {
-        // As of writing this (24.03.2023). SurveyJS doesn't have a proper event
-        // for question being removed from nested locations, such as dynamic panel.
-        // However, surveyJS will set .signaturePad property to null once the question is removed.
-        // Utilising this knowledge to sync our lists.
-        if (this._signaturePads[i].question.signaturePad) {
-          this._signaturePads[i].question.signatureWidth = Math.min(
-            this._signaturePads[i].question.maxSignatureWidth,
-            this._signaturePads[i].htmlElement.getBoundingClientRect().width,
-          );
-        } else {
-          // Signature pad was removed. Syncing list.
-          this._signaturePads.splice(i, 1);
-        }
+    // update the PIXI representation, if need be:
+    if (this._needPixiUpdate) {
+      this._needPixiUpdate = false;
+
+      // if a survey div does not exist, create it:
+      if (document.getElementById(this._surveyDivId) === null) {
+        document.body.insertAdjacentHTML(
+          "beforeend",
+          `<div id=${this._surveyDivId} class='survey'></div>`,
+        );
+      }
+
+      // start the survey flow:
+      if (typeof this._surveyData !== "undefined") {
+        this._runSurveyFlow(this._surveyData.surveyFlow, this._surveyData);
       }
     }
+
+    // TODO change the position, scale, anchor, z-index, etc.
+    // TODO update the size, taking into account the actual size of the survey
+    /*
+		this._pixi.zIndex = -this._depth;
+		this._pixi.alpha = this.opacity;
+
+		// set the scale:
+		const displaySize = this._getDisplaySize();
+		const size_px = util.to_px(displaySize, this.units, this.win);
+		const scaleX = size_px[0] / this._texture.width;
+		const scaleY = size_px[1] / this._texture.height;
+		this._pixi.scale.x = this.flipHoriz ? -scaleX : scaleX;
+		this._pixi.scale.y = this.flipVert ? scaleY : -scaleY;
+
+		// set the position, rotation, and anchor (image centered on pos):
+		this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
+		this._pixi.rotation = -this.ori * Math.PI / 180;
+		this._pixi.anchor.x = 0.5;
+		this._pixi.anchor.y = 0.5;
+*/
   }
 
-  _addEventListeners() {
-    window.addEventListener("resize", (e) => this._handleWindowResize(e));
+  /**
+   * Evaluate an expression, taking into account the survey responses.
+   *
+   * @param {string} expression - the expression to evaluate
+   * @returns {any} the evaluated expression
+   */
+  evaluateExpression(expression) {
+    if (
+      typeof expression === "undefined" ||
+      typeof this._surveyJSModel === "undefined"
+    ) {
+      return undefined;
+    }
+
+    // modify the expression when it is a simple URL, without variables
+    // i.e. when there is no quote and no brackets
+    if (expression.indexOf("'") === -1 && expression.indexOf("{") === -1) {
+      expression = `'${expression}'`;
+    }
+
+    return this._surveyJSModel.runExpression(expression);
   }
 
-  _handleAfterQuestionRender(sender, options) {
-    if (options.question.getType() === "signaturepad") {
-      this._signaturePads.push(options);
-      options.question.signatureWidth = Math.min(
-        options.question.maxSignatureWidth,
-        options.htmlElement.getBoundingClientRect().width,
+  /**
+   * Get the survey response.
+   */
+  getResponse() {
+    // if (typeof this._surveyModel === "undefined")
+    // {
+    // 	return {};
+    // }
+
+    // return this._surveyModel.data;
+
+    return this._overallSurveyResults;
+  }
+
+  /**
+   * Hide this stimulus on the next frame draw.
+   *
+   * @override
+   * @note We over-ride MinimalStim.hide such that we can remove the survey DOM element
+   */
+  hide() {
+    const surveyDiv = document.getElementById(this._surveyDivId);
+    if (surveyDiv !== null) {
+      document.body.removeChild(surveyDiv);
+    }
+
+    super.hide();
+  }
+
+  /**
+   * Add a callback that will be triggered when the participant finishes the survey.
+   *
+   * @param callback - callback triggered when the participant finishes the survey
+   * @return {void}
+   */
+  onFinished(callback) {
+    if (typeof this._surveyData === "undefined") {
+      throw {
+        context:
+          "when setting a callback triggered when the participant finishes the survey",
+        error: "the survey does not have a model",
+        origin: "Survey.onFinished",
+      };
+    }
+
+    // note: we cannot simply add the callback to surveyModel.onComplete since we first need
+    // to run _onSurveyComplete in order to collect data, estimate whether the survey is complete, etc.
+    if (typeof callback === "function") {
+      this._onFinishedCallback = callback;
+    }
+    // this._surveyModel.onComplete.add(callback);
+  }
+
+  /**
+   * Upload the survey response to the pavlovia.org server.
+   *
+   * @returns {Promise<ServerManager.UploadDataPromise>} a promise resolved when the survey response
+   * 	has been saved
+   */
+  save() {
+    this._psychoJS.logger.info("[PsychoJS] Save survey response.");
+
+    // get the survey response and complement it with experimentInfo fields:
+    const response = this.getResponse();
+    for (const field in this.psychoJS.experiment.extraInfo) {
+      if (Survey.SURVEY_EXPERIMENT_PARAMETERS.indexOf(field) === -1) {
+        response[field] = this.psychoJS.experiment.extraInfo[field];
+      }
+    }
+
+    // add timing information:
+    for (const question in this._questionAnswerTimestamps) {
+      response[`${question}_rt`] =
+        this._questionAnswerTimestamps[question].timestamp;
+    }
+
+    // sort the questions and question response times alphabetically:
+    const sortedResponses = Object.keys(response)
+      .sort()
+      .reduce((sorted, key) => {
+        sorted[key] = response[key];
+        return sorted;
+      }, {});
+
+    // if the response cannot be uploaded, e.g. the experiment is running locally, or
+    // if it is piloting mode, then we offer the response as a file for download:
+    if (
+      this._psychoJS.getEnvironment() !==
+        ExperimentHandler.Environment.SERVER ||
+      this._psychoJS.config.experiment.status !== "RUNNING" ||
+      this._psychoJS._serverMsg.has("__pilotToken")
+    ) {
+      const filename = `survey_${this._surveyId}.json`;
+      const blob = new Blob([JSON.stringify(sortedResponses)], {
+        type: "application/json",
+      });
+
+      const anchor = document.createElement("a");
+      anchor.href = window.URL.createObjectURL(blob);
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+
+      return Promise.resolve({});
+    }
+
+    // otherwise, we do upload the survey response
+    // note: if the surveyId was self-generated instead of being a parameter of the constructor,
+    // we need to also upload the survey model, as a new survey might need to be created on the fly
+    // by the server for this experiment.
+    if (!this._hasSelfGeneratedSurveyId) {
+      return this._psychoJS.serverManager.uploadSurveyResponse(
+        this._surveyId,
+        sortedResponses,
+        this.isCompleted,
+      );
+    } else {
+      return this._psychoJS.serverManager.uploadSurveyResponse(
+        this._surveyId,
+        sortedResponses,
+        this.isCompleted,
+        this._surveyData,
       );
     }
   }
 
   /**
-   * Init the SurveyJS.io library and various extensions, setup the theme.
+   * Setter for the model attribute.
    *
-   * @protected
+   * @param {Object | string} model - the survey model
+   * @param {boolean} [log= false] - whether to log
+   * @return {void}
    */
-  _initSurveyJS() {
-    // note: the Survey.js libraries must be added to the list of resources in PsychoJS.start:
-    // psychoJS.start({ resources: [ {'surveyLibrary': true}, ... ], ...});
+  setModel(model, log = false) {
+    const response = {
+      context: `when setting the model of Survey: ${this._name}`,
+      origin: "Survey.setModel",
+    };
 
-    // id of the SurveyJS html div:
-    this._surveyDivId = `survey-${this._name}`;
+    try {
+      // model is undefined: that's fine, but we raise a warning in case this is a symptom of an actual problem
+      if (typeof model === "undefined") {
+        this.psychoJS.logger.warn(
+          `setting the model of Survey: ${this._name} with argument: undefined.`,
+        );
+        this.psychoJS.logger.debug(
+          `set the model of Survey: ${this._name} as: undefined`,
+        );
+      } else {
+        // model is a string: it should be the name of a resource, which we load
+        if (typeof model === "string") {
+          const encodedModel = this.psychoJS.serverManager.getResource(model);
+          const decodedModel = new TextDecoder("utf-8").decode(encodedModel);
+          model = JSON.parse(decodedModel);
+        }
 
-    this._registerCustomExpressionFunctions(
-      window.Survey,
-      customExpressionFunctionsArray,
-    );
-    this._registerWidgets(window.Survey);
-    this._registerCustomSurveyProperties(window.Survey);
-    this._addEventListeners();
-    this._expressionsRunner = new window.Survey.ExpressionRunner();
+        // model should now be an object:
+        if (typeof model !== "object") {
+          throw "model is neither the name of a resource nor an object";
+        }
 
-    // setup the survey theme:
-    window.Survey.Serializer.getProperty(
-      "expression",
-      "minWidth",
-    ).defaultValue = "100px";
-    window.Survey.settings.minWidth = "100px";
-    window.Survey.StylesManager.applyTheme("defaultV2");
+        // if model is a straight-forward SurveyJS model, instead of a Pavlovia Survey super-flow model,
+        // convert it:
+        if (!("surveyFlow" in model)) {
+          model = {
+            embeddedData: [],
+            // surveyRunLogic: {},
+            inQuestionRandomization: {},
+            logs: [],
 
-    // load the desired style:
-    // TODO
-    // util.loadCss("./survey/css/grey_style.css");
+            questionsConverted: -1,
+
+            questionSkipLogic: {},
+            questionsOrderRandomization: [],
+            questionsTotal: -1,
+
+            // surveysMap: {},
+            // questionMapsBySurvey: {},
+            surveyFlow: {
+              name: "root",
+              nodes: [
+                {
+                  surveyIdx: 0,
+                  type: "QUESTION_BLOCK",
+                },
+              ],
+              type: "SEQUENTIAL_GROUP",
+            },
+            surveys: [model],
+            surveySettings: { showPrevButton: false },
+          };
+
+          this.psychoJS.logger.debug(
+            `converted the legacy model to the new super-flow model: ${JSON.stringify(model)}`,
+          );
+        }
+
+        // mark the root (top-most) node:
+        model.surveyFlow.isRootNode = true;
+
+        this._surveyData = model;
+
+        // augment the question names with block names:
+        this._augmentQuestionNames();
+
+        this._setAttribute("model", model, log);
+        this._onChange(true, true)();
+      }
+    } catch (error) {
+      throw { ...response, error };
+    }
   }
 
   /**
-   * Augment the model question names with model names.
+   * Setter for the surveyId attribute.
    *
-   * @protected
+   * @param {string} surveyId - the survey Id
+   * @param {boolean} [log= false] - whether to log
+   * @return {void}
    */
-  _augmentQuestionNames() {
-    if (!("surveys" in this._surveyData)) {
-      return;
+  setSurveyId(surveyId, log = false) {
+    this._setAttribute("surveyId", surveyId, log);
+
+    // only update the model if a genuine surveyId was given as parameter to the Survey:
+    if (!this._hasSelfGeneratedSurveyId) {
+      this.setModel(`${surveyId}.sid`, log);
     }
+  }
 
-    const surveys = this._surveyData["surveys"];
-    for (const survey of surveys) {
-      if (!("title" in survey) || !("pages" in survey)) {
-        continue;
-      }
+  /**
+   * Set survey variables.
+   *
+   * @param {Object} variables - an object with a number of variable name/variable value pairs
+   * @param {string[]} [excludedNames={}] - excluded variable names
+   * @return {void}
+   */
+  setVariables(variables, excludedNames) {
+    // filter the variables and set them:
+    // const filteredVariables = {};
+    // for (const name in variables)
+    // {
+    // 	if (excludedNames.indexOf(name) === -1)
+    // 	{
+    // 		filteredVariables[name] = variables[name];
+    // 		this._surveyModel.setVariable(name, variables[name]);
+    // 	}
+    // }
 
-      for (const page of survey["pages"]) {
+    // // set the values:
+    // this._surveyModel.mergeData(filteredVariables);
+
+    for (const name in variables) {
+      if (excludedNames.indexOf(name) === -1) {
+        this._variables[name] = variables[name];
+        // this._surveyData.variables[name] = variables[name];
       }
     }
   }

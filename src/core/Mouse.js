@@ -24,7 +24,7 @@ export class Mouse extends PsychObject {
    * @param {Window} options.win - the associated Window
    * @param {boolean} [options.autoLog= true] - whether or not to log
    */
-  constructor({ name, win, autoLog = true } = {}) {
+  constructor({ autoLog = true, name, win } = {}) {
     super(win._psychoJS, name);
 
     // note: those are in window units:
@@ -40,6 +40,19 @@ export class Mouse extends PsychObject {
     this._addAttribute("autoLog", autoLog);
 
     this.status = PsychoJS.Status.NOT_STARTED;
+  }
+
+  /**
+   * Reset the clocks associated to the given mouse buttons.
+   *
+   * @param {Array.number} [buttons= [0,1,2]] the buttons to reset (0: left, 1: center, 2: right)
+   */
+  clickReset(buttons = [0, 1, 2]) {
+    const mouseInfo = this.psychoJS.eventManager.getMouseInfo();
+    for (const b of buttons) {
+      mouseInfo.buttons.clocks[b].reset();
+      mouseInfo.buttons.times[b] = 0.0;
+    }
   }
 
   /**
@@ -60,6 +73,28 @@ export class Mouse extends PsychObject {
     this._lastPos = util.to_win(pos_px, "pix", this._win);
 
     return this._lastPos;
+  }
+
+  /**
+   * Get the status of each button (pressed or released) and, optionally, the time elapsed between  the last call to [clickReset]{@link module:core.Mouse#clickReset} and the pressing or releasing of the buttons.
+   *
+   * Note: clickReset is typically called at stimulus onset. When the participant presses a button, the time elapsed since the clickReset is stored internally and can be accessed any time afterwards with getPressed.
+   *
+   * @param {boolean} [getTime= false] whether or not to also return timestamps
+   * @return {Array.number | Array.<Array.number>} either an array of size 3 with the status (1 for pressed, 0 for released) of each mouse button [left, center, right], or a tuple with that array and another array of size 3 with the timestamps.
+   */
+  getPressed(getTime = false) {
+    const buttonPressed = this.psychoJS.eventManager
+      .getMouseInfo()
+      .buttons.pressed.slice();
+    if (!getTime) {
+      return buttonPressed;
+    } else {
+      const buttonTimes = this.psychoJS.eventManager
+        .getMouseInfo()
+        .buttons.times.slice();
+      return [buttonPressed, buttonTimes];
+    }
   }
 
   /**
@@ -99,28 +134,6 @@ export class Mouse extends PsychObject {
   }
 
   /**
-   * Get the status of each button (pressed or released) and, optionally, the time elapsed between  the last call to [clickReset]{@link module:core.Mouse#clickReset} and the pressing or releasing of the buttons.
-   *
-   * Note: clickReset is typically called at stimulus onset. When the participant presses a button, the time elapsed since the clickReset is stored internally and can be accessed any time afterwards with getPressed.
-   *
-   * @param {boolean} [getTime= false] whether or not to also return timestamps
-   * @return {Array.number | Array.<Array.number>} either an array of size 3 with the status (1 for pressed, 0 for released) of each mouse button [left, center, right], or a tuple with that array and another array of size 3 with the timestamps.
-   */
-  getPressed(getTime = false) {
-    const buttonPressed = this.psychoJS.eventManager
-      .getMouseInfo()
-      .buttons.pressed.slice();
-    if (!getTime) {
-      return buttonPressed;
-    } else {
-      const buttonTimes = this.psychoJS.eventManager
-        .getMouseInfo()
-        .buttons.times.slice();
-      return [buttonPressed, buttonTimes];
-    }
-  }
-
-  /**
    * Helper method for checking whether a stimulus has had any button presses within bounds.
    *
    * @param {object|module:visual.VisualStim} shape A type of visual stimulus or object having a `contains()` method.
@@ -132,7 +145,7 @@ export class Mouse extends PsychObject {
    */
   isPressedIn(...args) {
     // Look for options given in object literal form, cut out falsy inputs
-    const [{ shape: shapeMaybe, buttons: buttonsMaybe } = {}] = args.filter(
+    const [{ buttons: buttonsMaybe, shape: shapeMaybe } = {}] = args.filter(
       (v) => !!v,
     );
 
@@ -282,18 +295,5 @@ export class Mouse extends PsychObject {
    */
   mouseMoveTime() {
     return this.psychoJS.eventManager.getMouseInfo().moveClock.getTime();
-  }
-
-  /**
-   * Reset the clocks associated to the given mouse buttons.
-   *
-   * @param {Array.number} [buttons= [0,1,2]] the buttons to reset (0: left, 1: center, 2: right)
-   */
-  clickReset(buttons = [0, 1, 2]) {
-    const mouseInfo = this.psychoJS.eventManager.getMouseInfo();
-    for (const b of buttons) {
-      mouseInfo.buttons.clocks[b].reset();
-      mouseInfo.buttons.times[b] = 0.0;
-    }
   }
 }

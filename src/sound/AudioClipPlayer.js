@@ -26,13 +26,13 @@ export class AudioClipPlayer extends SoundPlayer {
    * @param {number} [options.loops= 0] - how many times to repeat the track or tone after it has played *
    */
   constructor({
-    psychoJS,
     audioClip,
-    startTime = 0,
-    stopTime = -1,
-    stereo = true,
-    volume = 0,
     loops = 0,
+    psychoJS,
+    startTime = 0,
+    stereo = true,
+    stopTime = -1,
+    volume = 0,
   } = {}) {
     super(psychoJS);
 
@@ -74,44 +74,22 @@ export class AudioClipPlayer extends SoundPlayer {
   }
 
   /**
-   * Set the duration of the audio clip.
+   * Start playing the sound.
    *
-   * @param {number} duration_s - the duration of the clip in seconds
+   * @param {number} loops - how many times to repeat the track after it has played once. If loops == -1, the track will repeat indefinitely until stopped.
+   * @param {number} [fadeDuration = 17] - how long should the fading in last in ms
    */
-  setDuration(duration_s) {
-    // TODO
+  play(loops, fadeDuration = 17) {
+    if (typeof loops !== "undefined") {
+      this.setLoops(loops);
+    }
 
-    throw {
-      origin: "AudioClipPlayer.setDuration",
-      context:
-        "when setting the duration of the playback for audio clip player: " +
-        this._name,
-      error: "not implemented yet",
-    };
-  }
+    // handle repeats:
+    if (loops > 0) {
+      // TODO
+    }
 
-  /**
-   * Set the volume of the playback.
-   *
-   * @param {number} volume - the volume of the playback (must be between 0.0 and 1.0)
-   * @param {boolean} [mute= false] - whether or not to mute the playback
-   */
-  setVolume(volume, mute = false) {
-    this._volume = volume;
-
-    this._audioClip.setVolume(mute ? 0.0 : volume);
-  }
-
-  /**
-   * Set the number of loops.
-   *
-   * @param {number} loops - how many times to repeat the clip after it has played once. If loops == -1, the clip will repeat indefinitely until stopped.
-   */
-  setLoops(loops) {
-    this._loops = loops;
-    this._currentLoopIndex = -1;
-
-    // TODO
+    this._audioClip.startPlayback();
   }
 
   /**
@@ -129,22 +107,44 @@ export class AudioClipPlayer extends SoundPlayer {
   }
 
   /**
-   * Start playing the sound.
+   * Set the duration of the audio clip.
    *
-   * @param {number} loops - how many times to repeat the track after it has played once. If loops == -1, the track will repeat indefinitely until stopped.
-   * @param {number} [fadeDuration = 17] - how long should the fading in last in ms
+   * @param {number} duration_s - the duration of the clip in seconds
    */
-  play(loops, fadeDuration = 17) {
-    if (typeof loops !== "undefined") {
-      this.setLoops(loops);
-    }
+  setDuration(duration_s) {
+    // TODO
 
-    // handle repeats:
-    if (loops > 0) {
-      // TODO
-    }
+    throw {
+      context:
+        "when setting the duration of the playback for audio clip player: " +
+        this._name,
+      error: "not implemented yet",
+      origin: "AudioClipPlayer.setDuration",
+    };
+  }
 
-    this._audioClip.startPlayback();
+  /**
+   * Set the number of loops.
+   *
+   * @param {number} loops - how many times to repeat the clip after it has played once. If loops == -1, the clip will repeat indefinitely until stopped.
+   */
+  setLoops(loops) {
+    this._loops = loops;
+    this._currentLoopIndex = -1;
+
+    // TODO
+  }
+
+  /**
+   * Set the volume of the playback.
+   *
+   * @param {number} volume - the volume of the playback (must be between 0.0 and 1.0)
+   * @param {boolean} [mute= false] - whether or not to mute the playback
+   */
+  setVolume(volume, mute = false) {
+    this._volume = volume;
+
+    this._audioClip.setVolume(mute ? 0.0 : volume);
   }
 
   /**

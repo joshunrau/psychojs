@@ -38,40 +38,40 @@ export class Polygon extends ShapeStim {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    name,
-    win,
-    lineWidth,
-    lineColor,
-    fillColor,
-    opacity,
-    edges,
-    radius,
-    pos,
-    size,
-    ori,
-    units,
-    contrast,
-    depth,
-    interpolate,
     autoDraw,
     autoLog,
+    contrast,
+    depth,
+    edges,
+    fillColor,
+    interpolate,
+    lineColor,
+    lineWidth,
+    name,
+    opacity,
+    ori,
+    pos,
+    radius,
+    size,
+    units,
+    win,
   } = {}) {
     super({
-      name,
-      win,
-      lineWidth,
-      lineColor,
-      fillColor,
-      opacity,
-      pos,
-      ori,
-      size,
-      units,
-      contrast,
-      depth,
-      interpolate,
       autoDraw,
       autoLog,
+      contrast,
+      depth,
+      fillColor,
+      interpolate,
+      lineColor,
+      lineWidth,
+      name,
+      opacity,
+      ori,
+      pos,
+      size,
+      units,
+      win,
     });
 
     this._psychoJS.logger.debug("create a new Polygon with name: ", name);
@@ -85,34 +85,6 @@ export class Polygon extends ShapeStim {
       this._psychoJS.experimentLogger.exp(
         `Created ${this.name} = ${this.toString()}`,
       );
-    }
-  }
-
-  /**
-   * Setter for the radius attribute.
-   *
-   * @param {number} radius - the polygon radius
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setRadius(radius, log = false) {
-    const hasChanged = this._setAttribute("radius", radius, log);
-
-    if (hasChanged) {
-      this._updateVertices();
-    }
-  }
-
-  /**
-   * Setter for the edges attribute.
-   *
-   * @param {number} edges - the number of edges
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setEdges(edges, log = false) {
-    const hasChanged = this._setAttribute("edges", Math.round(edges), log);
-
-    if (hasChanged) {
-      this._updateVertices();
     }
   }
 
@@ -135,5 +107,33 @@ export class Polygon extends ShapeStim {
     }
 
     this.setVertices(vertices);
+  }
+
+  /**
+   * Setter for the edges attribute.
+   *
+   * @param {number} edges - the number of edges
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setEdges(edges, log = false) {
+    const hasChanged = this._setAttribute("edges", Math.round(edges), log);
+
+    if (hasChanged) {
+      this._updateVertices();
+    }
+  }
+
+  /**
+   * Setter for the radius attribute.
+   *
+   * @param {number} radius - the polygon radius
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setRadius(radius, log = false) {
+    const hasChanged = this._setAttribute("radius", radius, log);
+
+    if (hasChanged) {
+      this._updateVertices();
+    }
   }
 }

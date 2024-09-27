@@ -7,6 +7,7 @@
  */
 
 import * as PIXI from "pixi.js-legacy";
+
 import { WindowMixin } from "../core/WindowMixin.js";
 import { Color } from "../util/Color.js";
 import { ColorMixin } from "../util/ColorMixin.js";
@@ -45,37 +46,37 @@ export class ShapeStim extends util
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    name,
-    win,
-    lineWidth,
-    lineColor,
-    fillColor,
-    opacity,
-    vertices,
-    closeShape,
-    pos,
     anchor,
-    size,
-    ori,
-    units,
-    contrast,
-    depth,
-    interpolate,
     autoDraw,
     autoLog,
+    closeShape,
+    contrast,
+    depth,
+    fillColor,
+    interpolate,
+    lineColor,
+    lineWidth,
+    name,
+    opacity,
+    ori,
+    pos,
+    size,
+    units,
+    vertices,
+    win,
   } = {}) {
     super({
-      name,
-      win,
-      units,
-      ori,
-      opacity,
-      pos,
       anchor,
-      depth,
-      size,
       autoDraw,
       autoLog,
+      depth,
+      name,
+      opacity,
+      ori,
+      pos,
+      size,
+      units,
+      win,
     });
 
     // the PIXI polygon corresponding to the vertices, in pixel units:
@@ -124,94 +125,6 @@ export class ShapeStim extends util
   }
 
   /**
-   * Setter for the vertices attribute.
-   *
-   * @param {Array.<Array.<number>>} vertices - the vertices
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setVertices(vertices, log = false) {
-    const response = {
-      origin: "ShapeStim.setVertices",
-      context: "when setting the vertices of ShapeStim: " + this._name,
-    };
-
-    this._psychoJS.logger.debug("set the vertices of ShapeStim:", this.name);
-
-    try {
-      // if vertices is a string, we check whether it is a known shape:
-      if (typeof vertices === "string") {
-        if (vertices in ShapeStim.KnownShapes) {
-          vertices = ShapeStim.KnownShapes[vertices];
-        } else {
-          throw `unknown shape: ${vertices}`;
-        }
-      }
-
-      this._setAttribute("vertices", vertices, log);
-
-      this._onChange(true, true)();
-    } catch (error) {
-      throw Object.assign(response, { error: error });
-    }
-  }
-
-  /**
-   * Determine whether an object is inside the bounding box of the ShapeStim.
-   *
-   * This is overridden in order to provide a finer inclusion test.
-   *
-   * @override
-   * @param {Object} object - the object
-   * @param {string} units - the units
-   * @return {boolean} whether or not the object is inside the bounding box of the ShapeStim
-   */
-  contains(object, units) {
-    // get the position of the object, in pixel coordinates:
-    const objectPos_px = util.getPositionFromObject(object, units);
-
-    if (typeof objectPos_px === "undefined") {
-      throw {
-        origin: "VisualStim.contains",
-        context:
-          "when determining whether VisualStim: " +
-          this._name +
-          " contains object: " +
-          util.toString(object),
-        error: "unable to determine the position of the object",
-      };
-    }
-
-    // test for inclusion:
-    const pos_px = util.to_px(this.pos, this.units, this.win);
-    this._getVertices_px();
-    const polygon_px = this._vertices_px.map((v) => [
-      v[0] + pos_px[0],
-      v[1] + pos_px[1],
-    ]);
-    return util.IsPointInsidePolygon(objectPos_px, polygon_px);
-  }
-
-  /**
-   * Setter for the anchor attribute.
-   *
-   * @param {string} anchor - anchor of the stim
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  setAnchor(anchor = "center", log = false) {
-    this._setAttribute("anchor", anchor, log);
-    if (this._pixi !== undefined) {
-      // since vertices are passed directly, usually assuming origin at [0, 0]
-      // and already being centered around it, subtracting 0.5 from anchorNum vals
-      // to get a desired effect.
-      const anchorNum = this._anchorTextToNum(this._anchor);
-      this._pixi.pivot.x =
-        (anchorNum[0] - 0.5) * this._pixi.scale.x * this._pixi.width;
-      this._pixi.pivot.y =
-        (anchorNum[1] - 0.5) * -this._pixi.scale.y * this._pixi.height;
-    }
-  }
-
-  /**
    * Estimate the bounding box.
    *
    * @override
@@ -242,58 +155,6 @@ export class ShapeStim extends util
     );
 
     // TODO take the orientation into account
-  }
-
-  /**
-   * Update the stimulus, if necessary.
-   *
-   * @protected
-   */
-  _updateIfNeeded() {
-    if (!this._needUpdate) {
-      return;
-    }
-    this._needUpdate = false;
-
-    // update the PIXI representation, if need be:
-    if (this._needPixiUpdate) {
-      this._needPixiUpdate = false;
-
-      if (typeof this._pixi !== "undefined") {
-        this._pixi.destroy(true);
-      }
-      this._pixi = undefined;
-
-      // get the PIXI polygon (this also updates _vertices_px):
-      this._getPixiPolygon();
-
-      // prepare the polygon in the given color and opacity:
-      this._pixi = new PIXI.Graphics();
-      this._pixi.lineStyle(
-        this._lineWidth,
-        this._lineColor.int,
-        this._opacity,
-        0.5,
-      );
-      if (typeof this._fillColor !== "undefined" && this._fillColor !== null) {
-        const contrastedColor = this.getContrastedColor(
-          new Color(this._fillColor),
-          this._contrast,
-        );
-        this._pixi.beginFill(contrastedColor.int, this._opacity);
-      }
-      this._pixi.drawPolygon(this._pixiPolygon_px);
-      if (typeof this._fillColor !== "undefined" && this._fillColor !== null) {
-        this._pixi.endFill();
-      }
-
-      this._pixi.zIndex = -this._depth;
-      this.anchor = this._anchor;
-    }
-
-    // set polygon position and rotation:
-    this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
-    this._pixi.rotation = (-this.ori * Math.PI) / 180.0;
   }
 
   /**
@@ -357,6 +218,146 @@ export class ShapeStim extends util
 
     return this._vertices_px;
   }
+
+  /**
+   * Update the stimulus, if necessary.
+   *
+   * @protected
+   */
+  _updateIfNeeded() {
+    if (!this._needUpdate) {
+      return;
+    }
+    this._needUpdate = false;
+
+    // update the PIXI representation, if need be:
+    if (this._needPixiUpdate) {
+      this._needPixiUpdate = false;
+
+      if (typeof this._pixi !== "undefined") {
+        this._pixi.destroy(true);
+      }
+      this._pixi = undefined;
+
+      // get the PIXI polygon (this also updates _vertices_px):
+      this._getPixiPolygon();
+
+      // prepare the polygon in the given color and opacity:
+      this._pixi = new PIXI.Graphics();
+      this._pixi.lineStyle(
+        this._lineWidth,
+        this._lineColor.int,
+        this._opacity,
+        0.5,
+      );
+      if (typeof this._fillColor !== "undefined" && this._fillColor !== null) {
+        const contrastedColor = this.getContrastedColor(
+          new Color(this._fillColor),
+          this._contrast,
+        );
+        this._pixi.beginFill(contrastedColor.int, this._opacity);
+      }
+      this._pixi.drawPolygon(this._pixiPolygon_px);
+      if (typeof this._fillColor !== "undefined" && this._fillColor !== null) {
+        this._pixi.endFill();
+      }
+
+      this._pixi.zIndex = -this._depth;
+      this.anchor = this._anchor;
+    }
+
+    // set polygon position and rotation:
+    this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
+    this._pixi.rotation = (-this.ori * Math.PI) / 180.0;
+  }
+
+  /**
+   * Determine whether an object is inside the bounding box of the ShapeStim.
+   *
+   * This is overridden in order to provide a finer inclusion test.
+   *
+   * @override
+   * @param {Object} object - the object
+   * @param {string} units - the units
+   * @return {boolean} whether or not the object is inside the bounding box of the ShapeStim
+   */
+  contains(object, units) {
+    // get the position of the object, in pixel coordinates:
+    const objectPos_px = util.getPositionFromObject(object, units);
+
+    if (typeof objectPos_px === "undefined") {
+      throw {
+        context:
+          "when determining whether VisualStim: " +
+          this._name +
+          " contains object: " +
+          util.toString(object),
+        error: "unable to determine the position of the object",
+        origin: "VisualStim.contains",
+      };
+    }
+
+    // test for inclusion:
+    const pos_px = util.to_px(this.pos, this.units, this.win);
+    this._getVertices_px();
+    const polygon_px = this._vertices_px.map((v) => [
+      v[0] + pos_px[0],
+      v[1] + pos_px[1],
+    ]);
+    return util.IsPointInsidePolygon(objectPos_px, polygon_px);
+  }
+
+  /**
+   * Setter for the anchor attribute.
+   *
+   * @param {string} anchor - anchor of the stim
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  setAnchor(anchor = "center", log = false) {
+    this._setAttribute("anchor", anchor, log);
+    if (this._pixi !== undefined) {
+      // since vertices are passed directly, usually assuming origin at [0, 0]
+      // and already being centered around it, subtracting 0.5 from anchorNum vals
+      // to get a desired effect.
+      const anchorNum = this._anchorTextToNum(this._anchor);
+      this._pixi.pivot.x =
+        (anchorNum[0] - 0.5) * this._pixi.scale.x * this._pixi.width;
+      this._pixi.pivot.y =
+        (anchorNum[1] - 0.5) * -this._pixi.scale.y * this._pixi.height;
+    }
+  }
+
+  /**
+   * Setter for the vertices attribute.
+   *
+   * @param {Array.<Array.<number>>} vertices - the vertices
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setVertices(vertices, log = false) {
+    const response = {
+      context: "when setting the vertices of ShapeStim: " + this._name,
+      origin: "ShapeStim.setVertices",
+    };
+
+    this._psychoJS.logger.debug("set the vertices of ShapeStim:", this.name);
+
+    try {
+      // if vertices is a string, we check whether it is a known shape:
+      if (typeof vertices === "string") {
+        if (vertices in ShapeStim.KnownShapes) {
+          vertices = ShapeStim.KnownShapes[vertices];
+        } else {
+          throw `unknown shape: ${vertices}`;
+        }
+      }
+
+      this._setAttribute("vertices", vertices, log);
+
+      this._onChange(true, true)();
+    } catch (error) {
+      throw Object.assign(response, { error: error });
+    }
+  }
 }
 
 /**
@@ -365,6 +366,16 @@ export class ShapeStim extends util
  * @readonly
  */
 ShapeStim.KnownShapes = {
+  arrow: [
+    [0.0, 0.5],
+    [-0.5, 0.0],
+    [-1 / 6, 0.0],
+    [-1 / 6, -0.5],
+    [1 / 6, -0.5],
+    [1 / 6, 0.0],
+    [0.5, 0.0],
+  ],
+
   cross: [
     [-0.1, +0.5], // up
     [+0.1, +0.5],
@@ -378,6 +389,13 @@ ShapeStim.KnownShapes = {
     [-0.5, -0.1], // left
     [-0.5, +0.1],
     [-0.1, +0.1],
+  ],
+
+  rectangle: [
+    [-0.5, 0.5], // Top left
+    [0.5, 0.5], // Top right
+    [0.5, -0.5], // Bottom left
+    [-0.5, -0.5], // Bottom right
   ],
 
   star7: [
@@ -401,23 +419,6 @@ ShapeStim.KnownShapes = {
     [+0.0, 0.5], // Point
     [-0.5, -0.5], // Bottom left
     [+0.5, -0.5], // Bottom right
-  ],
-
-  rectangle: [
-    [-0.5, 0.5], // Top left
-    [0.5, 0.5], // Top right
-    [0.5, -0.5], // Bottom left
-    [-0.5, -0.5], // Bottom right
-  ],
-
-  arrow: [
-    [0.0, 0.5],
-    [-0.5, 0.0],
-    [-1 / 6, 0.0],
-    [-1 / 6, -0.5],
-    [1 / 6, -0.5],
-    [1 / 6, 0.0],
-    [0.5, 0.0],
   ],
 };
 // Alias some names for convenience

@@ -23,7 +23,7 @@ export class MinimalStim extends PsychObject {
    * @param {boolean} [options.autoDraw= false] - whether or not the stimulus should be automatically drawn on every frame flip
    * @param {boolean} [options.autoLog= win.autoLog] - whether to log
    */
-  constructor({ name, win, autoDraw, autoLog } = {}) {
+  constructor({ autoDraw, autoLog, name, win } = {}) {
     super(win._psychoJS, name);
 
     // the PIXI representation of the stimulus:
@@ -42,22 +42,34 @@ export class MinimalStim extends PsychObject {
   }
 
   /**
-   * Setter for the autoDraw attribute.
+   * Update the stimulus, if necessary.
    *
-   * @param {boolean} autoDraw - the new value
-   * @param {boolean} [log= false] - whether to log
+   * Note: this is an abstract function, which should not be called.
+   *
+   * @abstract
+   * @protected
    */
-  setAutoDraw(autoDraw, log = false) {
-    this._setAttribute("autoDraw", autoDraw, log);
+  _updateIfNeeded() {
+    throw {
+      context: "when updating stimulus: " + this._name,
+      error: "this method is abstract and should not be called.",
+      origin: "MinimalStim._updateIfNeeded",
+    };
+  }
 
-    // autoDraw = true: add the stimulus to the draw list if it's not there already
-    if (this._autoDraw) {
-      this.draw();
-    }
-    // autoDraw = false: remove the stimulus from the draw list (and from the root container if it's already there)
-    else {
-      this.hide();
-    }
+  /**
+   * Determine whether an object is inside this stimulus.
+   *
+   * @abstract
+   * @param {Object} object - the object
+   * @param {String} units - the stimulus units
+   */
+  contains(object, units) {
+    throw {
+      context: `when determining whether stimulus: ${this._name} contains object: ${util.toString(object)}`,
+      error: "this method is abstract and should not be called.",
+      origin: "MinimalStim.contains",
+    };
   }
 
   /**
@@ -112,21 +124,6 @@ export class MinimalStim extends PsychObject {
   }
 
   /**
-   * Determine whether an object is inside this stimulus.
-   *
-   * @abstract
-   * @param {Object} object - the object
-   * @param {String} units - the stimulus units
-   */
-  contains(object, units) {
-    throw {
-      origin: "MinimalStim.contains",
-      context: `when determining whether stimulus: ${this._name} contains object: ${util.toString(object)}`,
-      error: "this method is abstract and should not be called.",
-    };
-  }
-
-  /**
    * Release the PIXI representation, if there is one.
    *
    * @param {boolean} [log= false] - whether to log
@@ -142,18 +139,21 @@ export class MinimalStim extends PsychObject {
   }
 
   /**
-   * Update the stimulus, if necessary.
+   * Setter for the autoDraw attribute.
    *
-   * Note: this is an abstract function, which should not be called.
-   *
-   * @abstract
-   * @protected
+   * @param {boolean} autoDraw - the new value
+   * @param {boolean} [log= false] - whether to log
    */
-  _updateIfNeeded() {
-    throw {
-      origin: "MinimalStim._updateIfNeeded",
-      context: "when updating stimulus: " + this._name,
-      error: "this method is abstract and should not be called.",
-    };
+  setAutoDraw(autoDraw, log = false) {
+    this._setAttribute("autoDraw", autoDraw, log);
+
+    // autoDraw = true: add the stimulus to the draw list if it's not there already
+    if (this._autoDraw) {
+      this.draw();
+    }
+    // autoDraw = false: remove the stimulus from the draw list (and from the root container if it's already there)
+    else {
+      this.hide();
+    }
   }
 }

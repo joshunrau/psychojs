@@ -7,8 +7,8 @@
  */
 
 import { Mouse } from "../core/Mouse.js";
-import { TextBox } from "./TextBox.js";
 import * as util from "../util/Util";
+import { TextBox } from "./TextBox.js";
 
 /**
  * ButtonStim visual stimulus.
@@ -38,59 +38,59 @@ export class ButtonStim extends TextBox {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    win,
-    name,
-    text,
-    font,
-    pos,
-    size,
-    padding,
     anchor = "center",
-    units,
-    color,
-    fillColor = "darkgrey",
-    borderColor,
-    borderWidth = 0,
-    opacity,
-    depth,
-    letterHeight,
-    bold = true,
-    italic,
     autoDraw,
     autoLog,
+    bold = true,
+    borderColor,
+    borderWidth = 0,
     boxFn,
+    color,
+    depth,
+    fillColor = "darkgrey",
+    font,
+    italic,
+    letterHeight,
     multiline,
+    name,
+    opacity,
+    padding,
+    pos,
+    size,
+    text,
+    units,
+    win,
   } = {}) {
     super({
-      win,
-      name,
-      text,
-      placeholder: text,
-      font,
-      pos,
-      size,
-      padding,
-      anchor,
-      units,
-      color,
-      fillColor,
-      borderColor,
-      borderWidth,
-      opacity,
-      depth,
-      letterHeight,
-      multiline,
-      bold,
-      italic,
       alignment: "center",
+      anchor,
       autoDraw,
       autoLog,
+      bold,
+      borderColor,
+      borderWidth,
       boxFn,
+      color,
+      depth,
+      fillColor,
+      font,
+      italic,
+      letterHeight,
+      multiline,
+      name,
+      opacity,
+      padding,
+      placeholder: text,
+      pos,
+      size,
+      text,
+      units,
+      win,
     });
 
     this.psychoJS.logger.debug("create a new Button with name: ", name);
 
-    this.listener = new Mouse({ name, win, autoLog });
+    this.listener = new Mouse({ autoLog, name, win });
 
     this._addAttribute("wasClicked", false);
 
@@ -107,21 +107,21 @@ export class ButtonStim extends TextBox {
   }
 
   /**
-   * How many times has this button been clicked on?
-   *
-   * @returns {number} the number of times the button has been clicked on
-   */
-  get numClicks() {
-    return this.timesOn.length;
-  }
-
-  /**
    * Is this button currently being clicked on?
    *
    * @returns {boolean} whether or not the button is being clicked on
    */
   get isClicked() {
     return this.listener.isPressedIn(this, [1, 0, 0]);
+  }
+
+  /**
+   * How many times has this button been clicked on?
+   *
+   * @returns {number} the number of times the button has been clicked on
+   */
+  get numClicks() {
+    return this.timesOn.length;
   }
 
   /**

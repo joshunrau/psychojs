@@ -3,34 +3,41 @@
  * */
 
 const CELL_TYPES = {
+  CHECKBOX: "checkbox",
   DROP_DOWN: "dropdown",
   RADIO: "radio",
-  CHECKBOX: "checkbox",
   TEXT: "text",
 };
 
 class SideBySideMatrix {
+  static CELL_GENERATORS = {
+    [CELL_TYPES.CHECKBOX]: "_generateCheckboxCells",
+    [CELL_TYPES.DROP_DOWN]: "_generateDropdownCells",
+    [CELL_TYPES.RADIO]: "_generateRadioCells",
+    [CELL_TYPES.TEXT]: "_generateTextInputCells",
+  };
+
   constructor(cfg = {}) {
     // surveyCSS contains css class names provided by the applied theme
     // INCLUDING those added/modified by application's code.
     const surveyCSS = cfg.question.css;
     this._CSS_CLASSES = {
-      WRAPPER: `${surveyCSS.matrix.tableWrapper} sbs-matrix`,
-      TABLE: surveyCSS.matrix.root,
-      TABLE_ROW: surveyCSS.matrixdropdown.row,
-      TABLE_HEADER_CELL: surveyCSS.matrix.headerCell,
-      TABLE_CELL: surveyCSS.matrix.cell,
-      INPUT_TEXT: surveyCSS.text.root,
-      LABEL: surveyCSS.matrix.label,
-      ITEM_CHECKED: surveyCSS.matrix.itemChecked,
-      ITEM_VALUE: surveyCSS.matrix.itemValue,
-      ITEM_DECORATOR: surveyCSS.matrix.materialDecorator,
-      RADIO: surveyCSS.radiogroup.item,
-      SELECT: surveyCSS.dropdown.control,
       CHECKBOX: surveyCSS.checkbox.item,
       CHECKBOX_CONTROL: surveyCSS.checkbox.itemControl,
       CHECKBOX_DECORATOR: surveyCSS.checkbox.materialDecorator,
       CHECKBOX_DECORATOR_SVG: surveyCSS.checkbox.itemDecorator,
+      INPUT_TEXT: surveyCSS.text.root,
+      ITEM_CHECKED: surveyCSS.matrix.itemChecked,
+      ITEM_DECORATOR: surveyCSS.matrix.materialDecorator,
+      ITEM_VALUE: surveyCSS.matrix.itemValue,
+      LABEL: surveyCSS.matrix.label,
+      RADIO: surveyCSS.radiogroup.item,
+      SELECT: surveyCSS.dropdown.control,
+      TABLE: surveyCSS.matrix.root,
+      TABLE_CELL: surveyCSS.matrix.cell,
+      TABLE_HEADER_CELL: surveyCSS.matrix.headerCell,
+      TABLE_ROW: surveyCSS.matrixdropdown.row,
+      WRAPPER: `${surveyCSS.matrix.tableWrapper} sbs-matrix`,
     };
     this._question = cfg.question;
     this._DOM = cfg.el;
@@ -44,12 +51,39 @@ class SideBySideMatrix {
     this._init(this._question, this._DOM);
   }
 
-  static CELL_GENERATORS = {
-    [CELL_TYPES.DROP_DOWN]: "_generateDropdownCells",
-    [CELL_TYPES.RADIO]: "_generateRadioCells",
-    [CELL_TYPES.CHECKBOX]: "_generateCheckboxCells",
-    [CELL_TYPES.TEXT]: "_generateTextInputCells",
-  };
+  _ensureQuestionValueFields(row, col) {
+    if (this._question.value === undefined) {
+      this._question.value = {};
+    }
+
+    if (this._question.value[row] === undefined) {
+      this._question.value[row] = {
+        [col]: {},
+      };
+    }
+
+    if (this._question.value[row][col] === undefined) {
+      this._question.value[row][col] = {};
+    }
+  }
+
+  _generateCheckboxCells(row, col, subColumns, CSS_CLASSES) {
+    let bodyCells = "";
+    let i;
+    for (i = 0; i < subColumns.length; i++) {
+      bodyCells += `<td class="${CSS_CLASSES.TABLE_CELL}">
+			<label class="${CSS_CLASSES.LABEL}">
+				<input class="${CSS_CLASSES.CHECKBOX_CONTROL}" type="${col.cellType}" name="${row.value}-${col.value}-${subColumns[i].value}">
+				<span class="${CSS_CLASSES.CHECKBOX_DECORATOR}">
+					<svg class="${CSS_CLASSES.CHECKBOX_DECORATOR_SVG}">
+						<use data-bind="attr:{'xlink:href':question.itemSvgIcon}" xlink:href="#icon-v2check"></use>
+					</svg>
+				</span>
+			</label>
+			</td>`;
+    }
+    return bodyCells;
+  }
 
   _generateDropdownCells(row, col, subColumns, CSS_CLASSES) {
     let bodyCells = "";
@@ -78,24 +112,6 @@ class SideBySideMatrix {
     return bodyCells;
   }
 
-  _generateCheckboxCells(row, col, subColumns, CSS_CLASSES) {
-    let bodyCells = "";
-    let i;
-    for (i = 0; i < subColumns.length; i++) {
-      bodyCells += `<td class="${CSS_CLASSES.TABLE_CELL}">
-			<label class="${CSS_CLASSES.LABEL}">
-				<input class="${CSS_CLASSES.CHECKBOX_CONTROL}" type="${col.cellType}" name="${row.value}-${col.value}-${subColumns[i].value}">
-				<span class="${CSS_CLASSES.CHECKBOX_DECORATOR}">
-					<svg class="${CSS_CLASSES.CHECKBOX_DECORATOR_SVG}">
-						<use data-bind="attr:{'xlink:href':question.itemSvgIcon}" xlink:href="#icon-v2check"></use>
-					</svg>
-				</span>
-			</label>
-			</td>`;
-    }
-    return bodyCells;
-  }
-
   _generateTextInputCells(row, col, subColumns, CSS_CLASSES) {
     let bodyCells = "";
     let i;
@@ -105,22 +121,6 @@ class SideBySideMatrix {
 			</td>`;
     }
     return bodyCells;
-  }
-
-  _ensureQuestionValueFields(row, col) {
-    if (this._question.value === undefined) {
-      this._question.value = {};
-    }
-
-    if (this._question.value[row] === undefined) {
-      this._question.value[row] = {
-        [col]: {},
-      };
-    }
-
-    if (this._question.value[row][col] === undefined) {
-      this._question.value[row][col] = {};
-    }
   }
 
   _handleInput(e) {
@@ -244,29 +244,6 @@ class SideBySideMatrix {
 
 export default function init(Survey) {
   var widget = {
-    //the widget name. It should be unique and written in lowcase.
-    name: "sidebysidematrix",
-
-    //the widget title. It is how it will appear on the toolbox of the SurveyJS Editor/Builder
-    title: "Side by side matrix",
-
-    //the name of the icon on the toolbox. We will leave it empty to use the standard one
-    iconName: "",
-
-    //If the widgets depends on third-party library(s) then here you may check if this library(s) is loaded
-    widgetIsLoaded: function () {
-      //return typeof $ == "function" && !!$.fn.select2; //return true if jQuery and select2 widget are loaded on the page
-      return true; //we do not require anything so we just return true.
-    },
-
-    //SurveyJS library calls this function for every question to check, if it should use this widget instead of default rendering/behavior
-    isFit: function (question) {
-      //we return true if the type of question is sidebysidematrix
-      return question.getType() === "sidebysidematrix";
-      //the following code will activate the widget for a text question with inputType equals to date
-      //return question.getType() === 'text' && question.inputType === "date";
-    },
-
     //Use this function to create a new class or add new properties or remove unneeded properties from your widget
     //activatedBy tells how your widget has been activated by: property, type or customType
     //property - it means that it will activated if a property of the existing question type is set to particular value, for example inputType = "date"
@@ -283,27 +260,21 @@ export default function init(Survey) {
       //For more information go to https://surveyjs.io/Examples/Builder/?id=addproperties#content-docs
       Survey.JsonObject.metaData.addProperties("sidebysidematrix", [
         {
-          name: "rows",
-          isArray: true,
           default: [],
+          isArray: true,
+          name: "rows",
         },
         {
-          name: "columns",
-          isArray: true,
           default: [],
+          isArray: true,
+          name: "columns",
         },
       ]);
     },
 
-    //If you want to use the default question rendering then set this property to true. We do not need any default rendering, we will use our our htmlTemplate
-    isDefaultRender: false,
-
-    //You should use it if your set the isDefaultRender to false
-    htmlTemplate: "<div></div>",
-
     //The main function, rendering and two-way binding
     afterRender: function (question, el) {
-      new SideBySideMatrix({ question, el });
+      new SideBySideMatrix({ el, question });
       // TODO: add readonly and enabled/disabled handlers.
 
       // let containers = el.querySelectorAll(".srv-slider-container");
@@ -379,6 +350,35 @@ export default function init(Survey) {
 
       // make elements disabled if needed
       // onReadOnlyChangedCallback();
+    },
+
+    //You should use it if your set the isDefaultRender to false
+    htmlTemplate: "<div></div>",
+
+    //the name of the icon on the toolbox. We will leave it empty to use the standard one
+    iconName: "",
+
+    //If you want to use the default question rendering then set this property to true. We do not need any default rendering, we will use our our htmlTemplate
+    isDefaultRender: false,
+
+    //SurveyJS library calls this function for every question to check, if it should use this widget instead of default rendering/behavior
+    isFit: function (question) {
+      //we return true if the type of question is sidebysidematrix
+      return question.getType() === "sidebysidematrix";
+      //the following code will activate the widget for a text question with inputType equals to date
+      //return question.getType() === 'text' && question.inputType === "date";
+    },
+
+    //the widget name. It should be unique and written in lowcase.
+    name: "sidebysidematrix",
+
+    //the widget title. It is how it will appear on the toolbox of the SurveyJS Editor/Builder
+    title: "Side by side matrix",
+
+    //If the widgets depends on third-party library(s) then here you may check if this library(s) is loaded
+    widgetIsLoaded: function () {
+      //return typeof $ == "function" && !!$.fn.select2; //return true if jQuery and select2 widget are loaded on the page
+      return true; //we do not require anything so we just return true.
     },
 
     //Use it to destroy the widget. It is typically needed by jQuery widgets

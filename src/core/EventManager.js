@@ -34,65 +34,28 @@ export class EventManager {
     // note: (a) clocks are reset on mouse button presses
     //       (b) the mouse listeners are added to the PIXI renderer, upon the latter's creation (see  Window.js)
     this._mouseInfo = {
-      pos: [0, 0],
-      wheelRel: [0.0, 0.0],
       buttons: {
-        pressed: [0, 0, 0],
         clocks: [new Clock(), new Clock(), new Clock()],
+        pressed: [0, 0, 0],
         // time elapsed from last reset of the button.Clocks:
         times: [0.0, 0.0, 0.0],
       },
       // clock reset when mouse is moved:
       moveClock: new Clock(),
+      pos: [0, 0],
+      wheelRel: [0.0, 0.0],
     };
   }
 
   /**
-   * Get the list of keys pressed by the participant.
+   * Convert a keycode to a W3C UI Event code.
+   * This is for legacy browsers.
    *
-   * Note: The w3c [key-event viewer]{@link https://w3c.github.io/uievents/tools/key-event-viewer.html} can be used to see possible values for the items in the keyList given the user's keyboard and chosen layout. The "key" and "code" columns in the UI Events fields are the relevant values for the keyList argument.
-   *
-   * @param {Object} options
-   * @param {string[]} [options.keyList= null] - keyList allows the user to specify a set of keys to check for. Only keypresses from this set of keys will be removed from the keyboard buffer. If no keyList is given, all keys will be checked and the key buffer will be cleared completely.
-   * @param {boolean} [options.timeStamped= false] - If true will return a list of tuples instead of a list of keynames. Each tuple has (keyname, time).
-   * @return {string[]} the list of keys that were pressed.
+   * @param {number} keycode - the keycode
+   * @returns {string} corresponding W3C UI Event code
    */
-  getKeys({ keyList = null, timeStamped = false } = {}) {
-    if (keyList != null) {
-      keyList = EventManager.pyglet2w3c(keyList);
-    }
-
-    let newBuffer = [];
-    let keys = [];
-    for (let i = 0; i < this._keyBuffer.length; ++i) {
-      const key = this._keyBuffer[i];
-      let keyId = null;
-
-      if (keyList != null) {
-        let index = keyList.indexOf(key.code);
-        if (index < 0) {
-          index = keyList.indexOf(EventManager._keycodeMap[key.keyCode]);
-        }
-        if (index >= 0) {
-          keyId = EventManager._reversePygletMap[keyList[index]];
-        }
-      } else {
-        keyId = EventManager._reversePygletMap[key.code];
-      }
-
-      if (keyId != null) {
-        if (timeStamped) {
-          keys.push([keyId, key.timestamp]);
-        } else {
-          keys.push(keyId);
-        }
-      } else {
-        newBuffer.push(key);
-      } // keep key press in buffer
-    }
-
-    this._keyBuffer = newBuffer;
-    return keys;
+  static keycode2w3c(keycode) {
+    return EventManager._keycodeMap[keycode];
   }
 
   /**
@@ -103,57 +66,80 @@ export class EventManager {
    */
 
   /**
-   * @typedef EventManager.MouseInfo
-   * @property {Array.number} pos - the position of the mouse [x, y]
-   * @property {Array.number} wheelRel - the relative position of the wheel [x, y]
-   * @property {EventManager.ButtonInfo} buttons - the mouse button info
-   * @property {Clock} moveClock - the clock that is reset whenever the mouse moves
-   */
-  /**
-   * Get the mouse info.
+   * Convert a keylist that uses pyglet key names to one that uses W3C KeyboardEvent.code values.
+   * This allows key lists that work in the builder environment to work in psychoJS web experiments.
    *
-   * @return {EventManager.MouseInfo} the mouse info.
+   * @param {Array.string} pygletKeyList - the array of pyglet key names
+   * @return {Array.string} the w3c keyList
    */
-  getMouseInfo() {
-    return this._mouseInfo;
+  static pyglet2w3c(pygletKeyList) {
+    let w3cKeyList = [];
+    for (let i = 0; i < pygletKeyList.length; i++) {
+      if (typeof EventManager._pygletMap[pygletKeyList[i]] === "undefined") {
+        w3cKeyList.push(pygletKeyList[i]);
+      } else {
+        w3cKeyList.push(EventManager._pygletMap[pygletKeyList[i]]);
+      }
+    }
+
+    return w3cKeyList;
   }
 
   /**
-   * Clear all events from the event buffer.
+   * Convert a W3C Key Code into a pyglet key.
    *
-   * @todo handle the attribs argument
+   * @param {string} code - W3C Key Code
+   * @returns {string} corresponding pyglet key
    */
-  clearEvents(attribs) {
-    this.clearKeys();
+  static w3c2pyglet(code) {
+    if (code in EventManager._reversePygletMap) {
+      return EventManager._reversePygletMap[code];
+    } else {
+      return "N/A";
+    }
   }
 
   /**
-   * Clear all keys from the key buffer.
+   * Add key listeners to the document.
+   *
+   * @protected
    */
-  clearKeys() {
-    this._keyBuffer = [];
+  _addKeyListeners() {
+    const self = this;
+
+    // add a keydown listener
+    // note: IE11 is not happy with document.addEventListener
+    window.addEventListener("keydown", (event) =>
+      // 		document.addEventListener("keydown", (event) =>
+      {
+        const timestamp = MonotonicClock.getReferenceTime();
+
+        // Note: we are using event.key since we are interested in the input character rather than
+        // the physical key position on the keyboard, i.e. we need to take into account the keyboard
+        // layout
+        // See https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code for a comment regarding
+        // event.code's lack of suitability
+        let code = EventManager._pygletMap[event.key];
+        // let code = event.code;
+
+        // take care of legacy Microsoft browsers (IE11 and pre-Chromium Edge):
+        if (typeof code === "undefined") {
+          code = EventManager.keycode2w3c(event.keyCode);
+        }
+
+        self._keyBuffer.push({
+          code,
+          key: event.key,
+          keyCode: event.keyCode,
+          timestamp,
+        });
+        self._psychoJS.logger.trace("keydown: ", event.key);
+        self._psychoJS.experimentLogger.data("Keydown: " + event.key);
+
+        event.stopPropagation();
+      },
+    );
   }
-
-  /**
-   * Start the move clock.
-   *
-   * @todo not implemented
-   */
-  startMoveClock() {}
-
-  /**
-   * Stop the move clock.
-   *
-   * @todo not implemented
-   */
-  stopMoveClock() {}
-
-  /**
-   * Reset the move clock.
-   *
-   * @todo not implemented
-   */
-  resetMoveClock() {}
 
   /**
    * Add various mouse listeners to the Pixi renderer of the {@link Window}.
@@ -336,91 +322,105 @@ export class EventManager {
   }
 
   /**
-   * Add key listeners to the document.
+   * Clear all events from the event buffer.
    *
-   * @protected
+   * @todo handle the attribs argument
    */
-  _addKeyListeners() {
-    const self = this;
+  clearEvents(attribs) {
+    this.clearKeys();
+  }
 
-    // add a keydown listener
-    // note: IE11 is not happy with document.addEventListener
-    window.addEventListener("keydown", (event) =>
-      // 		document.addEventListener("keydown", (event) =>
-      {
-        const timestamp = MonotonicClock.getReferenceTime();
+  /**
+   * Clear all keys from the key buffer.
+   */
+  clearKeys() {
+    this._keyBuffer = [];
+  }
 
-        // Note: we are using event.key since we are interested in the input character rather than
-        // the physical key position on the keyboard, i.e. we need to take into account the keyboard
-        // layout
-        // See https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code for a comment regarding
-        // event.code's lack of suitability
-        let code = EventManager._pygletMap[event.key];
-        // let code = event.code;
+  /**
+   * Get the list of keys pressed by the participant.
+   *
+   * Note: The w3c [key-event viewer]{@link https://w3c.github.io/uievents/tools/key-event-viewer.html} can be used to see possible values for the items in the keyList given the user's keyboard and chosen layout. The "key" and "code" columns in the UI Events fields are the relevant values for the keyList argument.
+   *
+   * @param {Object} options
+   * @param {string[]} [options.keyList= null] - keyList allows the user to specify a set of keys to check for. Only keypresses from this set of keys will be removed from the keyboard buffer. If no keyList is given, all keys will be checked and the key buffer will be cleared completely.
+   * @param {boolean} [options.timeStamped= false] - If true will return a list of tuples instead of a list of keynames. Each tuple has (keyname, time).
+   * @return {string[]} the list of keys that were pressed.
+   */
+  getKeys({ keyList = null, timeStamped = false } = {}) {
+    if (keyList != null) {
+      keyList = EventManager.pyglet2w3c(keyList);
+    }
 
-        // take care of legacy Microsoft browsers (IE11 and pre-Chromium Edge):
-        if (typeof code === "undefined") {
-          code = EventManager.keycode2w3c(event.keyCode);
+    let newBuffer = [];
+    let keys = [];
+    for (let i = 0; i < this._keyBuffer.length; ++i) {
+      const key = this._keyBuffer[i];
+      let keyId = null;
+
+      if (keyList != null) {
+        let index = keyList.indexOf(key.code);
+        if (index < 0) {
+          index = keyList.indexOf(EventManager._keycodeMap[key.keyCode]);
         }
-
-        self._keyBuffer.push({
-          code,
-          key: event.key,
-          keyCode: event.keyCode,
-          timestamp,
-        });
-        self._psychoJS.logger.trace("keydown: ", event.key);
-        self._psychoJS.experimentLogger.data("Keydown: " + event.key);
-
-        event.stopPropagation();
-      },
-    );
-  }
-
-  /**
-   * Convert a keylist that uses pyglet key names to one that uses W3C KeyboardEvent.code values.
-   * This allows key lists that work in the builder environment to work in psychoJS web experiments.
-   *
-   * @param {Array.string} pygletKeyList - the array of pyglet key names
-   * @return {Array.string} the w3c keyList
-   */
-  static pyglet2w3c(pygletKeyList) {
-    let w3cKeyList = [];
-    for (let i = 0; i < pygletKeyList.length; i++) {
-      if (typeof EventManager._pygletMap[pygletKeyList[i]] === "undefined") {
-        w3cKeyList.push(pygletKeyList[i]);
+        if (index >= 0) {
+          keyId = EventManager._reversePygletMap[keyList[index]];
+        }
       } else {
-        w3cKeyList.push(EventManager._pygletMap[pygletKeyList[i]]);
+        keyId = EventManager._reversePygletMap[key.code];
       }
+
+      if (keyId != null) {
+        if (timeStamped) {
+          keys.push([keyId, key.timestamp]);
+        } else {
+          keys.push(keyId);
+        }
+      } else {
+        newBuffer.push(key);
+      } // keep key press in buffer
     }
 
-    return w3cKeyList;
+    this._keyBuffer = newBuffer;
+    return keys;
   }
 
   /**
-   * Convert a W3C Key Code into a pyglet key.
-   *
-   * @param {string} code - W3C Key Code
-   * @returns {string} corresponding pyglet key
+   * @typedef EventManager.MouseInfo
+   * @property {Array.number} pos - the position of the mouse [x, y]
+   * @property {Array.number} wheelRel - the relative position of the wheel [x, y]
+   * @property {EventManager.ButtonInfo} buttons - the mouse button info
+   * @property {Clock} moveClock - the clock that is reset whenever the mouse moves
    */
-  static w3c2pyglet(code) {
-    if (code in EventManager._reversePygletMap) {
-      return EventManager._reversePygletMap[code];
-    } else {
-      return "N/A";
-    }
+  /**
+   * Get the mouse info.
+   *
+   * @return {EventManager.MouseInfo} the mouse info.
+   */
+  getMouseInfo() {
+    return this._mouseInfo;
   }
 
   /**
-   * Convert a keycode to a W3C UI Event code.
-   * This is for legacy browsers.
+   * Reset the move clock.
    *
-   * @param {number} keycode - the keycode
-   * @returns {string} corresponding W3C UI Event code
+   * @todo not implemented
    */
-  static keycode2w3c(keycode) {
-    return EventManager._keycodeMap[keycode];
-  }
+  resetMoveClock() {}
+
+  /**
+   * Start the move clock.
+   *
+   * @todo not implemented
+   */
+  startMoveClock() {}
+
+  /**
+   * Stop the move clock.
+   *
+   * @todo not implemented
+   */
+  stopMoveClock() {}
 }
 
 /**
@@ -436,6 +436,18 @@ export class EventManager {
  * @type {Object.<number,String>}
  */
 EventManager._keycodeMap = {
+  12: "NumpadEqual",
+  13: "Enter", // 13 is also Numpad Enter, alas
+  16: "ShiftLeft", // 16 is also Shift Right, alas
+  17: "ControlLeft", // 17 is also Control Right, alas
+  18: "AltLeft", // 18 is also Alt Right, alas
+  27: "Escape",
+  32: "Space",
+  37: "ArrowLeft",
+  38: "ArrowUp",
+  39: "ArrowRight",
+  40: "ArrowDown",
+  48: "Digit0",
   49: "Digit1",
   50: "Digit2",
   51: "Digit3",
@@ -445,7 +457,6 @@ EventManager._keycodeMap = {
   55: "Digit7",
   56: "Digit8",
   57: "Digit9",
-  48: "Digit0",
   65: "KeyA",
   66: "KeyB",
   67: "KeyC",
@@ -472,17 +483,6 @@ EventManager._keycodeMap = {
   88: "KeyX",
   89: "KeyY",
   90: "KeyZ",
-  188: "Comma",
-  190: "Period",
-  186: "Semicolon",
-  222: "Quote",
-  219: "BracketLeft",
-  221: "BracketRight",
-  192: "Backquote",
-  220: "Backslash",
-  189: "Minus",
-  187: "Equal",
-  144: "NumLock",
   96: "Numpad0",
   97: "Numpad1",
   98: "Numpad2",
@@ -493,25 +493,25 @@ EventManager._keycodeMap = {
   103: "Numpad7",
   104: "Numpad8",
   105: "Numpad9",
+  106: "NumpadMultiply",
   107: "NumpadAdd",
-  194: "NumpadComma",
+  109: "NumpadSubtract",
   110: "NumpadDecimal",
   111: "NumpadDivide",
-  12: "NumpadEqual",
-  106: "NumpadMultiply",
-  109: "NumpadSubtract",
+  144: "NumLock",
+  186: "Semicolon",
 
-  13: "Enter", // 13 is also Numpad Enter, alas
-  16: "ShiftLeft", // 16 is also Shift Right, alas
-  17: "ControlLeft", // 17 is also Control Right, alas
-  18: "AltLeft", // 18 is also Alt Right, alas
+  187: "Equal",
+  188: "Comma",
+  189: "Minus",
+  190: "Period",
 
-  37: "ArrowLeft",
-  38: "ArrowUp",
-  39: "ArrowRight",
-  40: "ArrowDown",
-  27: "Escape",
-  32: "Space",
+  192: "Backquote",
+  194: "NumpadComma",
+  219: "BracketLeft",
+  220: "Backslash",
+  221: "BracketRight",
+  222: "Quote",
 };
 
 /**
@@ -523,13 +523,6 @@ EventManager._keycodeMap = {
  * @type {Object.<String,String>}
  */
 EventManager._pygletMap = {
-  // alphanumeric:
-  grave: "Backquote",
-  backslash: "Backslash",
-  backspace: "Backspace",
-  bracketleft: "BracketLeft",
-  bracketright: "BracketRight",
-  comma: "Comma",
   0: "Digit0",
   1: "Digit1",
   2: "Digit2",
@@ -540,60 +533,40 @@ EventManager._pygletMap = {
   7: "Digit7",
   8: "Digit8",
   9: "Digit9",
-  equal: "Equal",
   a: "KeyA",
+  apostrophe: "Quote",
   b: "KeyB",
+  backslash: "Backslash",
+  backspace: "Backspace",
+  bracketleft: "BracketLeft",
+  bracketright: "BracketRight",
   c: "KeyC",
+  capslock: "CapsLock",
+  comma: "Comma",
   d: "KeyD",
+  // arrowpad
+  down: "ArrowDown",
   e: "KeyE",
+  equal: "Equal",
+  // functional keys
+  escape: "Escape",
   f: "KeyF",
   g: "KeyG",
+  // alphanumeric:
+  grave: "Backquote",
   h: "KeyH",
   i: "KeyI",
   j: "KeyJ",
   k: "KeyK",
   l: "KeyL",
-  m: "KeyM",
-  n: "KeyN",
-  o: "KeyO",
-  p: "KeyP",
-  q: "KeyQ",
-  r: "KeyR",
-  s: "KeyS",
-  t: "KeyT",
-  u: "KeyU",
-  v: "KeyV",
-  w: "KeyW",
-  x: "KeyX",
-  y: "KeyY",
-  z: "KeyZ",
-  minus: "Minus",
-  period: "Period",
-  apostrophe: "Quote",
-  semicolon: "Semicolon",
-  slash: "Slash",
-
-  // functional keys
-  escape: "Escape",
-  loption: "AltLeft",
-  roption: "AltRight",
-  capslock: "CapsLock",
-  lcontrol: "ControlLeft",
-  rcontrol: "ControlRight",
-  return: "Enter",
   lcommand: "MetaLeft",
-  rcommand: "MetaRight",
-  lshift: "ShiftLeft",
-  rshift: "ShiftRight",
-  space: "Space",
-  tab: "Tab",
-
-  // arrowpad
-  down: "ArrowDown",
+  lcontrol: "ControlLeft",
   left: "ArrowLeft",
-  right: "ArrowRight",
-  up: "ArrowUp",
-
+  loption: "AltLeft",
+  lshift: "ShiftLeft",
+  m: "KeyM",
+  minus: "Minus",
+  n: "KeyN",
   // numeric pad
   num_0: "Numpad0",
   num_1: "Numpad1",
@@ -602,17 +575,44 @@ EventManager._pygletMap = {
   num_4: "Numpad4",
   num_5: "Numpad5",
   num_6: "Numpad6",
+
   num_7: "Numpad7",
   num_8: "Numpad8",
   num_9: "Numpad9",
-  num_decimal: "NumpadDecimal",
-  num_enter: "NumpadEnter",
   num_add: "NumpadAdd",
-  num_subtract: "NumpadSubtract",
-  num_multiply: "NumpadMultiply",
+  num_decimal: "NumpadDecimal",
   num_divide: "NumpadDivide",
+  num_enter: "NumpadEnter",
   num_equal: "NumpadEqual",
+  num_multiply: "NumpadMultiply",
   num_numlock: "NumpadNumlock",
+  num_subtract: "NumpadSubtract",
+  o: "KeyO",
+  p: "KeyP",
+
+  period: "Period",
+  q: "KeyQ",
+  r: "KeyR",
+  rcommand: "MetaRight",
+
+  rcontrol: "ControlRight",
+  return: "Enter",
+  right: "ArrowRight",
+  roption: "AltRight",
+  rshift: "ShiftRight",
+  s: "KeyS",
+  semicolon: "Semicolon",
+  slash: "Slash",
+  space: "Space",
+  t: "KeyT",
+  tab: "Tab",
+  u: "KeyU",
+  up: "ArrowUp",
+  v: "KeyV",
+  w: "KeyW",
+  x: "KeyX",
+  y: "KeyY",
+  z: "KeyZ",
 };
 
 /**

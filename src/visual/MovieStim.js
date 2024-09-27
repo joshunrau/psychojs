@@ -7,13 +7,14 @@
  */
 
 import * as PIXI from "pixi.js-legacy";
+
 import { PsychoJS } from "../core/PsychoJS.js";
+import { Camera } from "../hardware/Camera.js";
 import { Color } from "../util/Color.js";
 import { ColorMixin } from "../util/ColorMixin.js";
 import { to_pixiPoint } from "../util/Pixi.js";
 import * as util from "../util/Util.js";
 import { VisualStim } from "./VisualStim.js";
-import { Camera } from "../hardware/Camera.js";
 
 /**
  * Movie Stimulus.
@@ -48,38 +49,38 @@ export class MovieStim extends VisualStim {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    name,
-    win,
-    movie,
-    pos,
     anchor,
-    units,
-    ori,
-    size,
-    color,
-    opacity,
-    contrast,
-    interpolate,
-    flipHoriz,
-    flipVert,
-    loop,
-    volume,
-    noAudio,
-    autoPlay,
     autoDraw,
     autoLog,
+    autoPlay,
+    color,
+    contrast,
+    flipHoriz,
+    flipVert,
+    interpolate,
+    loop,
+    movie,
+    name,
+    noAudio,
+    opacity,
+    ori,
+    pos,
+    size,
+    units,
+    volume,
+    win,
   } = {}) {
     super({
-      name,
-      win,
-      units,
-      ori,
-      opacity,
-      pos,
       anchor,
-      size,
       autoDraw,
       autoLog,
+      name,
+      opacity,
+      ori,
+      pos,
+      size,
+      units,
+      win,
     });
 
     this.psychoJS.logger.debug("create a new MovieStim with name: ", name);
@@ -134,6 +135,195 @@ export class MovieStim extends VisualStim {
   }
 
   /**
+   * Estimate the bounding box.
+   *
+   * @override
+   * @protected
+   */
+  _estimateBoundingBox() {
+    const size = this._getDisplaySize();
+    if (typeof size !== "undefined") {
+      this._boundingBox = new PIXI.Rectangle(
+        this._pos[0] - size[0] / 2,
+        this._pos[1] - size[1] / 2,
+        size[0],
+        size[1],
+      );
+    }
+
+    // TODO take the orientation into account
+  }
+
+  /**
+   * Get the size of the display image, which is either that of the ImageStim or that of the image
+   * it contains.
+   *
+   * @protected
+   * @return {number[]} the size of the displayed image
+   */
+  _getDisplaySize() {
+    let displaySize = this.size;
+
+    if (typeof displaySize === "undefined") {
+      // use the size of the texture, if we have access to it:
+      if (typeof this._texture !== "undefined" && this._texture.width > 0) {
+        const textureSize = [this._texture.width, this._texture.height];
+        displaySize = util.to_unit(textureSize, "pix", this.win, this.units);
+      }
+    }
+
+    return displaySize;
+  }
+
+  /**
+   * Update the stimulus, if necessary.
+   *
+   * @protected
+   */
+  _updateIfNeeded() {
+    if (!this._needUpdate) {
+      return;
+    }
+    this._needUpdate = false;
+
+    // update the PIXI representation, if need be:
+    if (this._needPixiUpdate) {
+      this._needPixiUpdate = false;
+
+      if (typeof this._pixi !== "undefined") {
+        // Leave original video in place
+        // https://pixijs.download/dev/docs/PIXI.Sprite.html#destroy
+        this._pixi.destroy({
+          baseTexture: false,
+          children: true,
+          texture: true,
+        });
+      }
+      this._pixi = undefined;
+
+      // no movie to draw: return immediately
+      if (typeof this._movie === "undefined") {
+        return;
+      }
+
+      // create a PixiJS video sprite:
+      this._texture = PIXI.Texture.from(this._movie, {
+        resourceOptions: { autoPlay: this.autoPlay },
+      });
+      this._pixi = new PIXI.Sprite(this._texture);
+
+      // since _texture.width may not be immedialy available but the rest of the code needs its value
+      // we arrange for repeated calls to _updateIfNeeded until we have a width:
+      if (this._texture.width === 0) {
+        this._needUpdate = true;
+        this._needPixiUpdate = true;
+        return;
+      }
+    }
+
+    // audio:
+    this._movie.muted = this._noAudio;
+    this._movie.volume = this._volume;
+
+    // loop:
+    this._movie.loop = this._loop;
+
+    // opacity:
+    this._pixi.alpha = this.opacity;
+
+    // set the scale:
+    const displaySize = this._getDisplaySize();
+    const size_px = util.to_px(displaySize, this.units, this.win);
+    const scaleX = size_px[0] / this._texture.width;
+    const scaleY = size_px[1] / this._texture.height;
+    this._pixi.scale.x = this.flipHoriz ? -scaleX : scaleX;
+    this._pixi.scale.y = this.flipVert ? scaleY : -scaleY;
+
+    // set the position, rotation, and anchor (movie centered on pos):
+    this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
+    this._pixi.rotation = (-this.ori * Math.PI) / 180;
+    this.anchor = this._anchor;
+
+    // re-estimate the bounding box, as the texture's width may now be available:
+    this._estimateBoundingBox();
+  }
+
+  /**
+   * Pause the movie.
+   *
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  pause(log = false) {
+    this.status = PsychoJS.Status.STOPPED;
+    this._movie.pause();
+  }
+
+  /**
+   * Start playing the movie.
+   *
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  play(log = false) {
+    this.status = PsychoJS.Status.STARTED;
+
+    // As found on https://goo.gl/LdLk22
+    const playPromise = this._movie.play();
+
+    if (playPromise !== undefined) {
+      playPromise.catch((error) => {
+        throw {
+          context: `when attempting to play MovieStim: ${this._name}`,
+          error,
+          origin: "MovieStim.play",
+        };
+      });
+    }
+  }
+
+  /**
+   * Reset the stimulus.
+   *
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  reset(log = false) {
+    this.status = PsychoJS.Status.NOT_STARTED;
+    this._movie.pause();
+    this.seek(0, log);
+  }
+
+  /**
+   * Jump to a specific timepoint
+   *
+   * Note: seek is experimental and does not work on all browsers at the moment.
+   *
+   * @param {number} timePoint - the timepoint to which to jump (in second)
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  seek(timePoint, log = false) {
+    if (timePoint < 0 || timePoint > this._movie.duration) {
+      throw {
+        context: `when seeking to timepoint: ${timePoint} of MovieStim: ${this._name}`,
+        error: `the timepoint does not belong to [0, ${this._movie.duration}`,
+        origin: "MovieStim.seek",
+      };
+    }
+
+    if (this._hasFastSeek) {
+      this._movie.fastSeek(timePoint);
+    } else {
+      try {
+        this._movie.currentTime = timePoint;
+      } catch (error) {
+        throw {
+          context: `when seeking to timepoint: ${timePoint} of MovieStim: ${this._name}`,
+          error,
+          origin: "MovieStim.seek",
+        };
+      }
+    }
+  }
+
+  /**
    * Setter for the movie attribute.
    *
    * @param {string | HTMLVideoElement | module:visual.Camera} movie - the name of a
@@ -142,8 +332,8 @@ export class MovieStim extends VisualStim {
    */
   setMovie(movie, log = false) {
     const response = {
-      origin: "MovieStim.setMovie",
       context: `when setting the movie of MovieStim: ${this._name}`,
+      origin: "MovieStim.setMovie",
     };
 
     try {
@@ -204,49 +394,6 @@ export class MovieStim extends VisualStim {
   }
 
   /**
-   * Reset the stimulus.
-   *
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  reset(log = false) {
-    this.status = PsychoJS.Status.NOT_STARTED;
-    this._movie.pause();
-    this.seek(0, log);
-  }
-
-  /**
-   * Start playing the movie.
-   *
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  play(log = false) {
-    this.status = PsychoJS.Status.STARTED;
-
-    // As found on https://goo.gl/LdLk22
-    const playPromise = this._movie.play();
-
-    if (playPromise !== undefined) {
-      playPromise.catch((error) => {
-        throw {
-          origin: "MovieStim.play",
-          context: `when attempting to play MovieStim: ${this._name}`,
-          error,
-        };
-      });
-    }
-  }
-
-  /**
-   * Pause the movie.
-   *
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  pause(log = false) {
-    this.status = PsychoJS.Status.STOPPED;
-    this._movie.pause();
-  }
-
-  /**
    * Stop the movie and reset to 0s.
    *
    * @param {boolean} [log= false] - whether of not to log
@@ -255,151 +402,5 @@ export class MovieStim extends VisualStim {
     this.status = PsychoJS.Status.STOPPED;
     this._movie.pause();
     this.seek(0, log);
-  }
-
-  /**
-   * Jump to a specific timepoint
-   *
-   * Note: seek is experimental and does not work on all browsers at the moment.
-   *
-   * @param {number} timePoint - the timepoint to which to jump (in second)
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  seek(timePoint, log = false) {
-    if (timePoint < 0 || timePoint > this._movie.duration) {
-      throw {
-        origin: "MovieStim.seek",
-        context: `when seeking to timepoint: ${timePoint} of MovieStim: ${this._name}`,
-        error: `the timepoint does not belong to [0, ${this._movie.duration}`,
-      };
-    }
-
-    if (this._hasFastSeek) {
-      this._movie.fastSeek(timePoint);
-    } else {
-      try {
-        this._movie.currentTime = timePoint;
-      } catch (error) {
-        throw {
-          origin: "MovieStim.seek",
-          context: `when seeking to timepoint: ${timePoint} of MovieStim: ${this._name}`,
-          error,
-        };
-      }
-    }
-  }
-
-  /**
-   * Estimate the bounding box.
-   *
-   * @override
-   * @protected
-   */
-  _estimateBoundingBox() {
-    const size = this._getDisplaySize();
-    if (typeof size !== "undefined") {
-      this._boundingBox = new PIXI.Rectangle(
-        this._pos[0] - size[0] / 2,
-        this._pos[1] - size[1] / 2,
-        size[0],
-        size[1],
-      );
-    }
-
-    // TODO take the orientation into account
-  }
-
-  /**
-   * Update the stimulus, if necessary.
-   *
-   * @protected
-   */
-  _updateIfNeeded() {
-    if (!this._needUpdate) {
-      return;
-    }
-    this._needUpdate = false;
-
-    // update the PIXI representation, if need be:
-    if (this._needPixiUpdate) {
-      this._needPixiUpdate = false;
-
-      if (typeof this._pixi !== "undefined") {
-        // Leave original video in place
-        // https://pixijs.download/dev/docs/PIXI.Sprite.html#destroy
-        this._pixi.destroy({
-          children: true,
-          texture: true,
-          baseTexture: false,
-        });
-      }
-      this._pixi = undefined;
-
-      // no movie to draw: return immediately
-      if (typeof this._movie === "undefined") {
-        return;
-      }
-
-      // create a PixiJS video sprite:
-      this._texture = PIXI.Texture.from(this._movie, {
-        resourceOptions: { autoPlay: this.autoPlay },
-      });
-      this._pixi = new PIXI.Sprite(this._texture);
-
-      // since _texture.width may not be immedialy available but the rest of the code needs its value
-      // we arrange for repeated calls to _updateIfNeeded until we have a width:
-      if (this._texture.width === 0) {
-        this._needUpdate = true;
-        this._needPixiUpdate = true;
-        return;
-      }
-    }
-
-    // audio:
-    this._movie.muted = this._noAudio;
-    this._movie.volume = this._volume;
-
-    // loop:
-    this._movie.loop = this._loop;
-
-    // opacity:
-    this._pixi.alpha = this.opacity;
-
-    // set the scale:
-    const displaySize = this._getDisplaySize();
-    const size_px = util.to_px(displaySize, this.units, this.win);
-    const scaleX = size_px[0] / this._texture.width;
-    const scaleY = size_px[1] / this._texture.height;
-    this._pixi.scale.x = this.flipHoriz ? -scaleX : scaleX;
-    this._pixi.scale.y = this.flipVert ? scaleY : -scaleY;
-
-    // set the position, rotation, and anchor (movie centered on pos):
-    this._pixi.position = to_pixiPoint(this.pos, this.units, this.win);
-    this._pixi.rotation = (-this.ori * Math.PI) / 180;
-    this.anchor = this._anchor;
-
-    // re-estimate the bounding box, as the texture's width may now be available:
-    this._estimateBoundingBox();
-  }
-
-  /**
-   * Get the size of the display image, which is either that of the ImageStim or that of the image
-   * it contains.
-   *
-   * @protected
-   * @return {number[]} the size of the displayed image
-   */
-  _getDisplaySize() {
-    let displaySize = this.size;
-
-    if (typeof displaySize === "undefined") {
-      // use the size of the texture, if we have access to it:
-      if (typeof this._texture !== "undefined" && this._texture.width > 0) {
-        const textureSize = [this._texture.width, this._texture.height];
-        displaySize = util.to_unit(textureSize, "pix", this.win, this.units);
-      }
-    }
-
-    return displaySize;
   }
 }

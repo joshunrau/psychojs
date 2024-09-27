@@ -16,14 +16,14 @@ export class TextInput extends PIXI.Container {
     super();
     this._input_style = Object.assign(
       {
-        position: "absolute",
         background: "none",
         border: "none",
+        boxSizing: "border-box",
+        lineHeight: "1",
         outline: "none",
+        position: "absolute",
         text: "",
         transformOrigin: "0 0",
-        lineHeight: "1",
-        boxSizing: "border-box",
       },
       styles.input,
     );
@@ -60,26 +60,36 @@ export class TextInput extends PIXI.Container {
 
   // GETTERS & SETTERS
 
-  get substituteText() {
-    return this._substituted;
+  get anchor() {
+    return this._anchor;
   }
 
-  set substituteText(substitute) {
-    if (this._substituted == substitute) {
-      return;
-    }
+  set anchor(v) {
+    this._anchor.copyFrom(v);
+  }
 
-    this._substituted = substitute;
+  get disabled() {
+    return this._disabled;
+  }
 
-    if (substitute) {
-      this._createSurrogate();
-      this._dom_visible = false;
-    } else {
-      this._destroySurrogate();
-      this._dom_visible = true;
-    }
-    this.placeholder = this._placeholder;
-    this._update();
+  set disabled(disabled) {
+    this._disabled = disabled;
+    this._dom_input.disabled = disabled;
+    this._dom_input.contentEditable = !disabled;
+    this._setState(disabled ? "DISABLED" : "DEFAULT");
+  }
+
+  get htmlInput() {
+    return this._dom_input;
+  }
+
+  get maxLength() {
+    return this._max_length;
+  }
+
+  set maxLength(length) {
+    this._max_length = length;
+    this._dom_input.setAttribute("maxlength", length);
   }
 
   get placeholder() {
@@ -94,26 +104,6 @@ export class TextInput extends PIXI.Container {
     } else {
       this._dom_input.placeholder = text;
     }
-  }
-
-  get disabled() {
-    return this._disabled;
-  }
-
-  set disabled(disabled) {
-    this._disabled = disabled;
-    this._dom_input.disabled = disabled;
-    this._dom_input.contentEditable = !disabled;
-    this._setState(disabled ? "DISABLED" : "DEFAULT");
-  }
-
-  get maxLength() {
-    return this._max_length;
-  }
-
-  set maxLength(length) {
-    this._max_length = length;
-    this._dom_input.setAttribute("maxlength", length);
   }
 
   get restrict() {
@@ -138,6 +128,28 @@ export class TextInput extends PIXI.Container {
     }
 
     this._restrict_regex = regex;
+  }
+
+  get substituteText() {
+    return this._substituted;
+  }
+
+  set substituteText(substitute) {
+    if (this._substituted == substitute) {
+      return;
+    }
+
+    this._substituted = substitute;
+
+    if (substitute) {
+      this._createSurrogate();
+      this._dom_visible = false;
+    } else {
+      this._destroySurrogate();
+      this._dom_visible = true;
+    }
+    this.placeholder = this._placeholder;
+    this._update();
   }
 
   get text() {
@@ -166,58 +178,70 @@ export class TextInput extends PIXI.Container {
     }
   }
 
-  get htmlInput() {
-    return this._dom_input;
+  _addListeners() {
+    this.on("added", this._onAdded.bind(this));
+    this.on("removed", this._onRemoved.bind(this));
+    this._dom_input.addEventListener(
+      "keydown",
+      this._onInputKeyDown.bind(this),
+    );
+    this._dom_input.addEventListener("input", this._onInputInput.bind(this));
+    this._dom_input.addEventListener("keyup", this._onInputKeyUp.bind(this));
+    this._dom_input.addEventListener("focus", this._onFocused.bind(this));
+    this._dom_input.addEventListener("blur", this._onBlurred.bind(this));
   }
 
-  get anchor() {
-    return this._anchor;
-  }
-
-  set anchor(v) {
-    this._anchor.copyFrom(v);
-  }
-
-  focus(options = { preventScroll: true }) {
-    if (this._substituted && !this.dom_visible) {
-      this._setDOMInputVisible(true);
-    }
-
-    this._dom_input.focus(options);
-  }
-
-  blur() {
-    this._dom_input.blur();
-  }
-
-  select() {
-    this.focus();
-    this._dom_input.select();
-  }
-
-  setInputStyle(key, value) {
-    this._input_style[key] = value;
-    this._dom_input.style[key] = value;
-
-    if (this._substituted && (key === "fontFamily" || key === "fontSize")) {
-      this._updateFontMetrics();
-    }
-
-    if (this._last_renderer) {
-      this._update();
+  _applyRestriction() {
+    if (this._restrict_regex.test(this.text)) {
+      this._restrict_value = this.text;
+    } else {
+      this.text = this._restrict_value;
+      this._dom_input.setSelectionRange(this._selection[0], this._selection[1]);
     }
   }
 
-  getInputStyle(key) {
-    return this._dom_input.style[key];
-  }
-
-  destroy(options) {
+  _buildBoxCache() {
     this._destroyBoxCache();
-    super.destroy(options);
+
+    let states = ["DEFAULT", "FOCUSED", "DISABLED"];
+    let input_bounds = this._getDOMInputBounds();
+
+    states.forEach((state) => {
+      this._box_cache[state] = this._box_generator(
+        input_bounds.width,
+        input_bounds.height,
+        state,
+      );
+    });
+
+    this._previous.input_bounds = input_bounds;
   }
 
-  // SETUP
+  _compareClientRects(r1, r2) {
+    if (!r1 || !r2) {
+      return false;
+    }
+    return (
+      r1.left == r2.left &&
+      r1.top == r2.top &&
+      r1.width == r2.width &&
+      r1.height == r2.height
+    );
+  }
+
+  _comparePixiMatrices(m1, m2) {
+    if (!m1 || !m2) {
+      return false;
+    }
+    return (
+      m1.a == m2.a &&
+      m1.b == m2.b &&
+      m1.c == m2.c &&
+      m1.d == m2.d &&
+      m1.tx == m2.tx &&
+      m1.ty == m2.ty
+    );
+  }
 
   _createDOMInput() {
     if (this._multiline) {
@@ -235,17 +259,223 @@ export class TextInput extends PIXI.Container {
     }
   }
 
-  _addListeners() {
-    this.on("added", this._onAdded.bind(this));
-    this.on("removed", this._onRemoved.bind(this));
-    this._dom_input.addEventListener(
-      "keydown",
-      this._onInputKeyDown.bind(this),
+  // SETUP
+
+  _createSurrogate() {
+    this._surrogate_hitbox = new PIXI.Graphics();
+    this._surrogate_hitbox.alpha = 0;
+    this._surrogate_hitbox.interactive = true;
+    this._surrogate_hitbox.cursor = "text";
+    this._surrogate_hitbox.on("pointerdown", this._onSurrogateFocus.bind(this));
+    this.addChild(this._surrogate_hitbox);
+
+    this._surrogate_mask = new PIXI.Graphics();
+    this.addChild(this._surrogate_mask);
+
+    this._surrogate = new PIXI.Text("", {});
+    this.addChild(this._surrogate);
+
+    this._surrogate.mask = this._surrogate_mask;
+
+    this._updateFontMetrics();
+    this._updateSurrogate();
+  }
+
+  _deriveSurrogatePadding() {
+    let indent = this._input_style.textIndent
+      ? parseFloat(this._input_style.textIndent)
+      : 0;
+
+    if (this._input_style.padding && this._input_style.padding.length > 0) {
+      let components = this._input_style.padding.trim().split(" ");
+
+      if (components.length == 1) {
+        let padding = parseFloat(components[0]);
+        return [padding, padding, padding, padding + indent];
+      } else if (components.length == 2) {
+        let paddingV = parseFloat(components[0]);
+        let paddingH = parseFloat(components[1]);
+        return [paddingV, paddingH, paddingV, paddingH + indent];
+      } else if (components.length == 4) {
+        let padding = components.map((component) => {
+          return parseFloat(component);
+        });
+        padding[3] += indent;
+        return padding;
+      }
+    }
+
+    return [0, 0, 0, indent];
+  }
+
+  _deriveSurrogateStyle() {
+    let style = new PIXI.TextStyle();
+
+    for (const key in this._input_style) {
+      switch (key) {
+        case "color":
+          style.fill = this._input_style.color;
+          break;
+
+        case "fontFamily":
+        case "fontSize":
+        case "fontStyle":
+        case "fontVariant":
+        case "fontWeight":
+          style[key] = this._input_style[key];
+          break;
+
+        case "letterSpacing":
+          style.letterSpacing = parseFloat(this._input_style.letterSpacing);
+          break;
+
+        case "textAlign":
+          style.align = this._input_style.textAlign;
+          break;
+      }
+    }
+
+    if (this._multiline) {
+      style.lineHeight = parseFloat(style.fontSize);
+      style.wordWrap = true;
+      style.wordWrapWidth = this._getDOMInputBounds().width;
+    }
+
+    if (this._dom_input.value.length === 0) {
+      style.fill = this._placeholderColor;
+    }
+
+    return style;
+  }
+
+  _deriveSurrogateText() {
+    if (this._dom_input.value.length === 0) {
+      return this._placeholder;
+    }
+
+    if (this._dom_input.type == "password") {
+      return "•".repeat(this._dom_input.value.length);
+    }
+
+    return this._dom_input.value;
+  }
+
+  _destroyBoxCache() {
+    if (this._box) {
+      this.removeChild(this._box);
+      this._box = null;
+    }
+
+    for (let i in this._box_cache) {
+      this._box_cache[i].destroy();
+      this._box_cache[i] = null;
+      delete this._box_cache[i];
+    }
+  }
+
+  _destroySurrogate() {
+    if (!this._surrogate) {
+      return;
+    }
+
+    this.removeChild(this._surrogate);
+    this.removeChild(this._surrogate_hitbox);
+
+    this._surrogate.destroy();
+    this._surrogate_hitbox.destroy();
+
+    this._surrogate = null;
+    this._surrogate_hitbox = null;
+  }
+
+  _ensureFocus() {
+    if (!this._hasFocus()) {
+      this.focus();
+    }
+  }
+
+  _getCanvasBounds() {
+    let rect = this._last_renderer.view.getBoundingClientRect();
+    let bounds = {
+      height: rect.height,
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+    };
+    bounds.left += window.scrollX;
+    bounds.top += window.scrollY;
+    return bounds;
+  }
+
+  _getDOMInputBounds() {
+    let remove_after = false;
+
+    if (!this._dom_added) {
+      document.body.appendChild(this._dom_input);
+      remove_after = true;
+    }
+
+    let org_transform = this._dom_input.style.transform;
+    let org_display = this._dom_input.style.display;
+    this._dom_input.style.transform = "";
+    this._dom_input.style.display = "block";
+    let bounds = this._dom_input.getBoundingClientRect();
+    this._dom_input.style.transform = org_transform;
+    this._dom_input.style.display = org_display;
+
+    if (remove_after) {
+      document.body.removeChild(this._dom_input);
+    }
+
+    return bounds;
+  }
+
+  _getDOMRelativeWorldTransform() {
+    let canvas_bounds = this._last_renderer.view.getBoundingClientRect();
+    let matrix = this.worldTransform.clone();
+
+    matrix.scale(this._resolution, this._resolution);
+    matrix.scale(
+      canvas_bounds.width / this._last_renderer.width,
+      canvas_bounds.height / this._last_renderer.height,
     );
-    this._dom_input.addEventListener("input", this._onInputInput.bind(this));
-    this._dom_input.addEventListener("keyup", this._onInputKeyUp.bind(this));
-    this._dom_input.addEventListener("focus", this._onFocused.bind(this));
-    this._dom_input.addEventListener("blur", this._onBlurred.bind(this));
+    return matrix;
+  }
+
+  _hasFocus() {
+    return document.activeElement === this._dom_input;
+  }
+
+  // RENDER & UPDATE
+
+  _needsNewBoxCache() {
+    let input_bounds = this._getDOMInputBounds();
+    return (
+      !this._previous.input_bounds ||
+      input_bounds.width != this._previous.input_bounds.width ||
+      input_bounds.height != this._previous.input_bounds.height
+    );
+  }
+
+  _needsUpdate() {
+    return (
+      !this._comparePixiMatrices(
+        this.worldTransform,
+        this._previous.world_transform,
+      ) ||
+      !this._compareClientRects(
+        this._canvas_bounds,
+        this._previous.canvas_bounds,
+      ) ||
+      this.worldAlpha != this._previous.world_alpha ||
+      this.worldVisible != this._previous.world_visible
+    );
+  }
+
+  _onAdded() {
+    document.body.appendChild(this._dom_input);
+    this._updateDOMInput();
+    this._dom_added = true;
   }
 
   _onAnchorUpdate() {
@@ -253,13 +483,14 @@ export class TextInput extends PIXI.Container {
     this.pivot.y = this._anchor.y * this.scale.y * this.height;
   }
 
-  _onInputKeyDown(e) {
-    this._selection = [
-      this._dom_input.selectionStart,
-      this._dom_input.selectionEnd,
-    ];
+  _onBlurred() {
+    this._setState("DEFAULT");
+    this.emit("blur");
+  }
 
-    this.emit("keydown", e.keyCode);
+  _onFocused() {
+    this._setState("FOCUSED");
+    this.emit("focus");
   }
 
   _onInputInput(e) {
@@ -278,57 +509,36 @@ export class TextInput extends PIXI.Container {
     this.emit("input", this.text);
   }
 
+  _onInputKeyDown(e) {
+    this._selection = [
+      this._dom_input.selectionStart,
+      this._dom_input.selectionEnd,
+    ];
+
+    this.emit("keydown", e.keyCode);
+  }
+
   _onInputKeyUp(e) {
     this.emit("keyup", e.keyCode);
   }
 
-  _onFocused() {
-    this._setState("FOCUSED");
-    this.emit("focus");
-  }
-
-  _onBlurred() {
-    this._setState("DEFAULT");
-    this.emit("blur");
-  }
-
-  _onAdded() {
-    document.body.appendChild(this._dom_input);
-    this._updateDOMInput();
-    this._dom_added = true;
-  }
+  // STATE COMPAIRSON (FOR PERFORMANCE BENEFITS)
 
   _onRemoved() {
     document.body.removeChild(this._dom_input);
     this._dom_added = false;
   }
 
-  _setState(state) {
-    this.state = state;
-    this._updateBox();
-    if (this._substituted) {
-      this._updateSubstitution();
-    }
+  _onSurrogateFocus() {
+    this._setDOMInputVisible(true);
+    // sometimes the input is not being focused by the mouseclick
+    setTimeout(this._ensureFocus.bind(this), 10);
   }
 
-  // RENDER & UPDATE
+  // INPUT SUBSTITUTION
 
-  // for pixi v4
-  renderWebGL(renderer) {
-    super.renderWebGL(renderer);
-    this._renderInternal(renderer);
-  }
-
-  // for pixi v4
-  renderCanvas(renderer) {
-    super.renderCanvas(renderer);
-    this._renderInternal(renderer);
-  }
-
-  // for pixi v5
-  render(renderer) {
-    super.render(renderer);
-    this._renderInternal(renderer);
+  _pixiMatrixToCSS(m) {
+    return "matrix(" + [m.a, m.b, m.c, m.d, m.tx, m.ty].join(",") + ")";
   }
 
   _renderInternal(renderer) {
@@ -337,6 +547,23 @@ export class TextInput extends PIXI.Container {
     this._canvas_bounds = this._getCanvasBounds();
     if (this._needsUpdate()) {
       this._update();
+    }
+  }
+
+  _setDOMInputVisible(visible) {
+    const definedStyle = this._input_style.display;
+    this._dom_input.style.display = visible
+      ? definedStyle
+        ? definedStyle
+        : "display"
+      : "none";
+  }
+
+  _setState(state) {
+    this.state = state;
+    this._updateBox();
+    if (this._substituted) {
+      this._updateSubstitution();
     }
   }
 
@@ -376,18 +603,6 @@ export class TextInput extends PIXI.Container {
     this.pivot.y = this._anchor.y * this.scale.y * this.height;
   }
 
-  _updateSubstitution() {
-    if (this.state === "FOCUSED") {
-      this._dom_visible = true;
-      this._surrogate.visible = this.text.length === 0;
-    } else {
-      this._dom_visible = false;
-      this._surrogate.visible = true;
-    }
-    this._updateDOMInput();
-    this._updateSurrogate();
-  }
-
   _updateDOMInput() {
     if (!this._canvas_bounds) {
       return;
@@ -407,60 +622,22 @@ export class TextInput extends PIXI.Container {
     this._previous.world_visible = this.worldVisible;
   }
 
-  _applyRestriction() {
-    if (this._restrict_regex.test(this.text)) {
-      this._restrict_value = this.text;
+  _updateFontMetrics() {
+    const style = this._deriveSurrogateStyle();
+    const font = style.toFontString();
+
+    this._font_metrics = PIXI.TextMetrics.measureFont(font);
+  }
+
+  _updateSubstitution() {
+    if (this.state === "FOCUSED") {
+      this._dom_visible = true;
+      this._surrogate.visible = this.text.length === 0;
     } else {
-      this.text = this._restrict_value;
-      this._dom_input.setSelectionRange(this._selection[0], this._selection[1]);
+      this._dom_visible = false;
+      this._surrogate.visible = true;
     }
-  }
-
-  // STATE COMPAIRSON (FOR PERFORMANCE BENEFITS)
-
-  _needsUpdate() {
-    return (
-      !this._comparePixiMatrices(
-        this.worldTransform,
-        this._previous.world_transform,
-      ) ||
-      !this._compareClientRects(
-        this._canvas_bounds,
-        this._previous.canvas_bounds,
-      ) ||
-      this.worldAlpha != this._previous.world_alpha ||
-      this.worldVisible != this._previous.world_visible
-    );
-  }
-
-  _needsNewBoxCache() {
-    let input_bounds = this._getDOMInputBounds();
-    return (
-      !this._previous.input_bounds ||
-      input_bounds.width != this._previous.input_bounds.width ||
-      input_bounds.height != this._previous.input_bounds.height
-    );
-  }
-
-  // INPUT SUBSTITUTION
-
-  _createSurrogate() {
-    this._surrogate_hitbox = new PIXI.Graphics();
-    this._surrogate_hitbox.alpha = 0;
-    this._surrogate_hitbox.interactive = true;
-    this._surrogate_hitbox.cursor = "text";
-    this._surrogate_hitbox.on("pointerdown", this._onSurrogateFocus.bind(this));
-    this.addChild(this._surrogate_hitbox);
-
-    this._surrogate_mask = new PIXI.Graphics();
-    this.addChild(this._surrogate_mask);
-
-    this._surrogate = new PIXI.Text("", {});
-    this.addChild(this._surrogate);
-
-    this._surrogate.mask = this._surrogate_mask;
-
-    this._updateFontMetrics();
+    this._updateDOMInput();
     this._updateSurrogate();
   }
 
@@ -504,6 +681,8 @@ export class TextInput extends PIXI.Container {
     this._surrogate_hitbox.interactive = !this._disabled;
   }
 
+  // CACHING OF INPUT BOX GRAPHICS
+
   _updateSurrogateMask(bounds, padding) {
     this._surrogate_mask.clear();
     this._surrogate_mask.beginFill(0);
@@ -516,242 +695,63 @@ export class TextInput extends PIXI.Container {
     this._surrogate_mask.endFill();
   }
 
-  _destroySurrogate() {
-    if (!this._surrogate) {
-      return;
-    }
-
-    this.removeChild(this._surrogate);
-    this.removeChild(this._surrogate_hitbox);
-
-    this._surrogate.destroy();
-    this._surrogate_hitbox.destroy();
-
-    this._surrogate = null;
-    this._surrogate_hitbox = null;
-  }
-
-  _onSurrogateFocus() {
-    this._setDOMInputVisible(true);
-    // sometimes the input is not being focused by the mouseclick
-    setTimeout(this._ensureFocus.bind(this), 10);
-  }
-
-  _ensureFocus() {
-    if (!this._hasFocus()) {
-      this.focus();
-    }
-  }
-
-  _deriveSurrogateStyle() {
-    let style = new PIXI.TextStyle();
-
-    for (const key in this._input_style) {
-      switch (key) {
-        case "color":
-          style.fill = this._input_style.color;
-          break;
-
-        case "fontFamily":
-        case "fontSize":
-        case "fontWeight":
-        case "fontVariant":
-        case "fontStyle":
-          style[key] = this._input_style[key];
-          break;
-
-        case "letterSpacing":
-          style.letterSpacing = parseFloat(this._input_style.letterSpacing);
-          break;
-
-        case "textAlign":
-          style.align = this._input_style.textAlign;
-          break;
-      }
-    }
-
-    if (this._multiline) {
-      style.lineHeight = parseFloat(style.fontSize);
-      style.wordWrap = true;
-      style.wordWrapWidth = this._getDOMInputBounds().width;
-    }
-
-    if (this._dom_input.value.length === 0) {
-      style.fill = this._placeholderColor;
-    }
-
-    return style;
-  }
-
-  _deriveSurrogatePadding() {
-    let indent = this._input_style.textIndent
-      ? parseFloat(this._input_style.textIndent)
-      : 0;
-
-    if (this._input_style.padding && this._input_style.padding.length > 0) {
-      let components = this._input_style.padding.trim().split(" ");
-
-      if (components.length == 1) {
-        let padding = parseFloat(components[0]);
-        return [padding, padding, padding, padding + indent];
-      } else if (components.length == 2) {
-        let paddingV = parseFloat(components[0]);
-        let paddingH = parseFloat(components[1]);
-        return [paddingV, paddingH, paddingV, paddingH + indent];
-      } else if (components.length == 4) {
-        let padding = components.map((component) => {
-          return parseFloat(component);
-        });
-        padding[3] += indent;
-        return padding;
-      }
-    }
-
-    return [0, 0, 0, indent];
-  }
-
-  _deriveSurrogateText() {
-    if (this._dom_input.value.length === 0) {
-      return this._placeholder;
-    }
-
-    if (this._dom_input.type == "password") {
-      return "•".repeat(this._dom_input.value.length);
-    }
-
-    return this._dom_input.value;
-  }
-
-  _updateFontMetrics() {
-    const style = this._deriveSurrogateStyle();
-    const font = style.toFontString();
-
-    this._font_metrics = PIXI.TextMetrics.measureFont(font);
-  }
-
-  // CACHING OF INPUT BOX GRAPHICS
-
-  _buildBoxCache() {
-    this._destroyBoxCache();
-
-    let states = ["DEFAULT", "FOCUSED", "DISABLED"];
-    let input_bounds = this._getDOMInputBounds();
-
-    states.forEach((state) => {
-      this._box_cache[state] = this._box_generator(
-        input_bounds.width,
-        input_bounds.height,
-        state,
-      );
-    });
-
-    this._previous.input_bounds = input_bounds;
-  }
-
-  _destroyBoxCache() {
-    if (this._box) {
-      this.removeChild(this._box);
-      this._box = null;
-    }
-
-    for (let i in this._box_cache) {
-      this._box_cache[i].destroy();
-      this._box_cache[i] = null;
-      delete this._box_cache[i];
-    }
+  blur() {
+    this._dom_input.blur();
   }
 
   // HELPER FUNCTIONS
 
-  _hasFocus() {
-    return document.activeElement === this._dom_input;
+  destroy(options) {
+    this._destroyBoxCache();
+    super.destroy(options);
   }
 
-  _setDOMInputVisible(visible) {
-    const definedStyle = this._input_style.display;
-    this._dom_input.style.display = visible
-      ? definedStyle
-        ? definedStyle
-        : "display"
-      : "none";
-  }
-
-  _getCanvasBounds() {
-    let rect = this._last_renderer.view.getBoundingClientRect();
-    let bounds = {
-      top: rect.top,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-    };
-    bounds.left += window.scrollX;
-    bounds.top += window.scrollY;
-    return bounds;
-  }
-
-  _getDOMInputBounds() {
-    let remove_after = false;
-
-    if (!this._dom_added) {
-      document.body.appendChild(this._dom_input);
-      remove_after = true;
+  focus(options = { preventScroll: true }) {
+    if (this._substituted && !this.dom_visible) {
+      this._setDOMInputVisible(true);
     }
 
-    let org_transform = this._dom_input.style.transform;
-    let org_display = this._dom_input.style.display;
-    this._dom_input.style.transform = "";
-    this._dom_input.style.display = "block";
-    let bounds = this._dom_input.getBoundingClientRect();
-    this._dom_input.style.transform = org_transform;
-    this._dom_input.style.display = org_display;
+    this._dom_input.focus(options);
+  }
 
-    if (remove_after) {
-      document.body.removeChild(this._dom_input);
+  getInputStyle(key) {
+    return this._dom_input.style[key];
+  }
+
+  // for pixi v5
+  render(renderer) {
+    super.render(renderer);
+    this._renderInternal(renderer);
+  }
+
+  // for pixi v4
+  renderCanvas(renderer) {
+    super.renderCanvas(renderer);
+    this._renderInternal(renderer);
+  }
+
+  // for pixi v4
+  renderWebGL(renderer) {
+    super.renderWebGL(renderer);
+    this._renderInternal(renderer);
+  }
+
+  select() {
+    this.focus();
+    this._dom_input.select();
+  }
+
+  setInputStyle(key, value) {
+    this._input_style[key] = value;
+    this._dom_input.style[key] = value;
+
+    if (this._substituted && (key === "fontFamily" || key === "fontSize")) {
+      this._updateFontMetrics();
     }
 
-    return bounds;
-  }
-
-  _getDOMRelativeWorldTransform() {
-    let canvas_bounds = this._last_renderer.view.getBoundingClientRect();
-    let matrix = this.worldTransform.clone();
-
-    matrix.scale(this._resolution, this._resolution);
-    matrix.scale(
-      canvas_bounds.width / this._last_renderer.width,
-      canvas_bounds.height / this._last_renderer.height,
-    );
-    return matrix;
-  }
-
-  _pixiMatrixToCSS(m) {
-    return "matrix(" + [m.a, m.b, m.c, m.d, m.tx, m.ty].join(",") + ")";
-  }
-
-  _comparePixiMatrices(m1, m2) {
-    if (!m1 || !m2) {
-      return false;
+    if (this._last_renderer) {
+      this._update();
     }
-    return (
-      m1.a == m2.a &&
-      m1.b == m2.b &&
-      m1.c == m2.c &&
-      m1.d == m2.d &&
-      m1.tx == m2.tx &&
-      m1.ty == m2.ty
-    );
-  }
-
-  _compareClientRects(r1, r2) {
-    if (!r1 || !r2) {
-      return false;
-    }
-    return (
-      r1.left == r2.left &&
-      r1.top == r2.top &&
-      r1.width == r2.width &&
-      r1.height == r2.height
-    );
   }
 }
 

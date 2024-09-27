@@ -37,14 +37,6 @@ function handleBipolarMatrixRendering(survey, options) {
 }
 
 export default {
-  registerSurveyProperties(Survey) {
-    Survey.Serializer.addProperty("matrix", {
-      name: "subType:text",
-      default: "",
-      category: "general",
-    });
-  },
-
   registerModelCallbacks(surveyModel) {
     surveyModel.onAfterRenderQuestion.add((survey, options) => {
       if (
@@ -53,6 +45,14 @@ export default {
       ) {
         handleBipolarMatrixRendering(survey, options);
       }
+    });
+  },
+
+  registerSurveyProperties(Survey) {
+    Survey.Serializer.addProperty("matrix", {
+      category: "general",
+      default: "",
+      name: "subType:text",
     });
   },
 };

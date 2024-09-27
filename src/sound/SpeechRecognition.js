@@ -6,9 +6,9 @@
  * @license Distributed under the terms of the MIT License
  */
 
+import { PsychoJS } from "../core/PsychoJS";
 import { Clock } from "../util/Clock";
 import { PsychObject } from "../util/PsychObject";
-import { PsychoJS } from "../core/PsychoJS";
 
 /**
  * Transcript.
@@ -64,16 +64,16 @@ export class SpeechRecognition extends PsychObject {
    * @todo deal with alternatives, interim results, and recognition errors
    */
   constructor({
-    psychoJS,
-    name,
-    bufferSize,
-    continuous,
-    lang,
-    interimResults,
-    maxAlternatives,
-    tokens,
-    clock,
     autoLog,
+    bufferSize,
+    clock,
+    continuous,
+    interimResults,
+    lang,
+    maxAlternatives,
+    name,
+    psychoJS,
+    tokens,
   } = {}) {
     super(psychoJS);
 
@@ -95,125 +95,6 @@ export class SpeechRecognition extends PsychObject {
         `Created ${this.name} = ${this.toString()}`,
       );
     }
-  }
-
-  /**
-   * Start the speech recognition process.
-   *
-   * @return {Promise} promise fulfilled when the process actually starts
-   */
-  start() {
-    if (this._status !== PsychoJS.Status.STARTED) {
-      this._psychoJS.logger.debug(
-        "request to start the speech recognition process",
-      );
-
-      try {
-        if (!this._recognition) {
-          throw "the speech recognition has not been initialised yet, possibly because the participant has not given the authorisation to record audio";
-        }
-
-        this._recognition.start();
-
-        // return a promise, which will be satisfied when the process actually starts,
-        // which is also when the reset of the clock and the change of status takes place
-        const self = this;
-        return new Promise((resolve, reject) => {
-          self._startCallback = resolve;
-          self._errorCallback = reject;
-        });
-      } catch (error) {
-        // TODO Strangely, start sometimes fails with the message that the recognition has already started. It is most probably a bug in the implementation of the Web Speech API. We need to catch this particular error and no throw on this occasion
-
-        this._psychoJS.logger.error(
-          "unable to start the speech to text transcription: " +
-            JSON.stringify(error),
-        );
-        this._status = PsychoJS.Status.ERROR;
-
-        throw {
-          origin: "Transcriber.start",
-          context:
-            "when starting the speech to text transcription with transcriber: " +
-            this._name,
-          error,
-        };
-      }
-    }
-  }
-
-  /**
-   * Stop the speech recognition process.
-   *
-   * @return {Promise} promise fulfilled when the process actually stops
-   */
-  stop() {
-    if (this._status === PsychoJS.Status.STARTED) {
-      this._psychoJS.logger.debug(
-        "request to stop the speech recognition process",
-      );
-
-      this._recognition.stop();
-
-      // return a promise, which will be satisfied when the process actually stops:
-      const self = this;
-      return new Promise((resolve, reject) => {
-        self._stopCallback = resolve;
-        self._errorCallback = reject;
-      });
-    }
-  }
-
-  /**
-   * Get the list of transcripts still in the buffer, i.e. those that have not been
-   * previously cleared by calls to getTranscripts with clear = true.
-   *
-   * @param {Object} options
-   * @param {string[]} [options.transcriptList= []]] - the list of transcripts texts to consider. If transcriptList is empty, we consider all transcripts.
-   * @param {boolean} [options.clear= false] - whether or not to keep in the buffer the transcripts for a subsequent call to getTranscripts. If a keyList has been given and clear = true, we only remove from the buffer those keys in keyList
-   * @return {Transcript[]} the list of transcripts still in the buffer
-   */
-  getTranscripts({ transcriptList = [], clear = true } = {}) {
-    // if nothing in the buffer, return immediately:
-    if (this._bufferLength === 0) {
-      return [];
-    }
-
-    // iterate over the buffer, from start to end, and discard the null transcripts (i.e. those
-    // previously cleared):
-    const filteredTranscripts = [];
-    const bufferWrap = this._bufferLength === this._bufferSize;
-    let i = bufferWrap ? this._bufferIndex : -1;
-    do {
-      i = (i + 1) % this._bufferSize;
-
-      const transcript = this._circularBuffer[i];
-      if (transcript) {
-        // if the transcriptList is empty of the transcript text is in the transcriptList:
-        if (
-          transcriptList.length === 0 ||
-          transcriptList.includes(transcript.text)
-        ) {
-          filteredTranscripts.push(transcript);
-
-          if (clear) {
-            this._circularBuffer[i] = null;
-          }
-        }
-      }
-    } while (i !== this._bufferIndex);
-
-    return filteredTranscripts;
-  }
-
-  /**
-   * Clear all transcripts and resets the circular buffers.
-   */
-  clearTranscripts() {
-    // circular buffer of transcripts:
-    this._circularBuffer = new Array(this._bufferSize);
-    this._bufferLength = 0;
-    this._bufferIndex = -1;
   }
 
   /**
@@ -356,5 +237,124 @@ export class SpeechRecognition extends PsychObject {
       );
       self._status = PsychoJS.Status.ERROR;
     };
+  }
+
+  /**
+   * Clear all transcripts and resets the circular buffers.
+   */
+  clearTranscripts() {
+    // circular buffer of transcripts:
+    this._circularBuffer = new Array(this._bufferSize);
+    this._bufferLength = 0;
+    this._bufferIndex = -1;
+  }
+
+  /**
+   * Get the list of transcripts still in the buffer, i.e. those that have not been
+   * previously cleared by calls to getTranscripts with clear = true.
+   *
+   * @param {Object} options
+   * @param {string[]} [options.transcriptList= []]] - the list of transcripts texts to consider. If transcriptList is empty, we consider all transcripts.
+   * @param {boolean} [options.clear= false] - whether or not to keep in the buffer the transcripts for a subsequent call to getTranscripts. If a keyList has been given and clear = true, we only remove from the buffer those keys in keyList
+   * @return {Transcript[]} the list of transcripts still in the buffer
+   */
+  getTranscripts({ clear = true, transcriptList = [] } = {}) {
+    // if nothing in the buffer, return immediately:
+    if (this._bufferLength === 0) {
+      return [];
+    }
+
+    // iterate over the buffer, from start to end, and discard the null transcripts (i.e. those
+    // previously cleared):
+    const filteredTranscripts = [];
+    const bufferWrap = this._bufferLength === this._bufferSize;
+    let i = bufferWrap ? this._bufferIndex : -1;
+    do {
+      i = (i + 1) % this._bufferSize;
+
+      const transcript = this._circularBuffer[i];
+      if (transcript) {
+        // if the transcriptList is empty of the transcript text is in the transcriptList:
+        if (
+          transcriptList.length === 0 ||
+          transcriptList.includes(transcript.text)
+        ) {
+          filteredTranscripts.push(transcript);
+
+          if (clear) {
+            this._circularBuffer[i] = null;
+          }
+        }
+      }
+    } while (i !== this._bufferIndex);
+
+    return filteredTranscripts;
+  }
+
+  /**
+   * Start the speech recognition process.
+   *
+   * @return {Promise} promise fulfilled when the process actually starts
+   */
+  start() {
+    if (this._status !== PsychoJS.Status.STARTED) {
+      this._psychoJS.logger.debug(
+        "request to start the speech recognition process",
+      );
+
+      try {
+        if (!this._recognition) {
+          throw "the speech recognition has not been initialised yet, possibly because the participant has not given the authorisation to record audio";
+        }
+
+        this._recognition.start();
+
+        // return a promise, which will be satisfied when the process actually starts,
+        // which is also when the reset of the clock and the change of status takes place
+        const self = this;
+        return new Promise((resolve, reject) => {
+          self._startCallback = resolve;
+          self._errorCallback = reject;
+        });
+      } catch (error) {
+        // TODO Strangely, start sometimes fails with the message that the recognition has already started. It is most probably a bug in the implementation of the Web Speech API. We need to catch this particular error and no throw on this occasion
+
+        this._psychoJS.logger.error(
+          "unable to start the speech to text transcription: " +
+            JSON.stringify(error),
+        );
+        this._status = PsychoJS.Status.ERROR;
+
+        throw {
+          context:
+            "when starting the speech to text transcription with transcriber: " +
+            this._name,
+          error,
+          origin: "Transcriber.start",
+        };
+      }
+    }
+  }
+
+  /**
+   * Stop the speech recognition process.
+   *
+   * @return {Promise} promise fulfilled when the process actually stops
+   */
+  stop() {
+    if (this._status === PsychoJS.Status.STARTED) {
+      this._psychoJS.logger.debug(
+        "request to stop the speech recognition process",
+      );
+
+      this._recognition.stop();
+
+      // return a promise, which will be satisfied when the process actually stops:
+      const self = this;
+      return new Promise((resolve, reject) => {
+        self._stopCallback = resolve;
+        self._errorCallback = reject;
+      });
+    }
   }
 }

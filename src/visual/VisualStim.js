@@ -8,6 +8,7 @@
  */
 
 import * as PIXI from "pixi.js-legacy";
+
 import { MinimalStim } from "../core/MinimalStim.js";
 import { WindowMixin } from "../core/WindowMixin.js";
 import * as util from "../util/Util.js";
@@ -35,20 +36,20 @@ export class VisualStim extends util.mix(MinimalStim).with(WindowMixin) {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    name,
-    win,
-    units,
-    ori,
-    opacity,
-    depth,
-    pos,
     anchor,
-    size,
-    clipMask,
     autoDraw,
     autoLog,
+    clipMask,
+    depth,
+    name,
+    opacity,
+    ori,
+    pos,
+    size,
+    units,
+    win,
   } = {}) {
-    super({ win, name, autoDraw, autoLog });
+    super({ autoDraw, autoLog, name, win });
 
     this._addAttribute(
       "units",
@@ -78,142 +79,6 @@ export class VisualStim extends util.mix(MinimalStim).with(WindowMixin) {
 
     // the PIXI representation also needs to be updated:
     this._needPixiUpdate = true;
-  }
-
-  /**
-   * Force a refresh of the stimulus.
-   *
-   * refresh() is called, in particular, when the Window is resized.
-   */
-  refresh() {
-    this._onChange(true, true)();
-  }
-
-  /**
-   * Setter for the size attribute.
-   *
-   * @param {undefined | null | number | number[]} size - the stimulus size
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setSize(size, log = false) {
-    // size is either undefined, null, or a tuple of numbers:
-    if (typeof size !== "undefined" && size !== null) {
-      size = util.toNumerical(size);
-      if (!Array.isArray(size)) {
-        size = [size, size];
-      }
-    }
-
-    const hasChanged = this._setAttribute("size", size, log);
-
-    if (hasChanged) {
-      this._onChange(true, true)();
-    }
-  }
-
-  /**
-   * Setter for the orientation attribute.
-   *
-   * @param {number} ori - the orientation in degree with 0 as the vertical position, positive values rotate clockwise.
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setOri(ori, log = false) {
-    const hasChanged = this._setAttribute("ori", ori, log);
-
-    if (hasChanged) {
-      let radians = -ori * 0.017453292519943295;
-      this._rotationMatrix = [
-        [Math.cos(radians), -Math.sin(radians)],
-        [Math.sin(radians), Math.cos(radians)],
-      ];
-
-      if (this._pixi instanceof PIXI.DisplayObject) {
-        this._pixi.rotation = (-ori * Math.PI) / 180;
-      } else {
-        this._onChange(true, true)();
-      }
-    }
-  }
-
-  /**
-   * Setter for the position attribute.
-   *
-   * @param {Array.<number>} pos - position of the center of the stimulus, in stimulus units
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setPos(pos, log = false) {
-    const prevPos = this._pos;
-    const hasChanged = this._setAttribute("pos", util.toNumerical(pos), log);
-
-    if (hasChanged) {
-      this._needUpdate = true;
-
-      // update the bounding box, without calling _estimateBoundingBox:
-      this._boundingBox.x += this._pos[0] - prevPos[0];
-      this._boundingBox.y += this._pos[1] - prevPos[1];
-    }
-  }
-
-  /**
-   * Setter for the depth attribute.
-   *
-   * @param {Array.<number>} depth - order in which stimuli is rendered, kind of css's z-index with a negative sign.
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setDepth(depth = 0, log = false) {
-    this._setAttribute("depth", depth, log);
-    if (this._pixi) {
-      this._pixi.zIndex = -this._depth;
-    }
-  }
-
-  /**
-   * Determine whether an object is inside the bounding box of the stimulus.
-   *
-   * @param {Object} object - the object
-   * @param {string} units - the units
-   * @return {boolean} whether or not the object is inside the bounding box of the stimulus
-   */
-  contains(object, units) {
-    // get the position of the object, in pixel coordinates:
-    const objectPos_px = util.getPositionFromObject(object, units);
-
-    if (typeof objectPos_px === "undefined") {
-      throw {
-        origin: "VisualStim.contains",
-        context:
-          "when determining whether VisualStim: " +
-          this._name +
-          " contains object: " +
-          util.toString(object),
-        error: "unable to determine the position of the object",
-      };
-    }
-
-    // test for inclusion:
-    return this._getBoundingBox_px().contains(objectPos_px[0], objectPos_px[1]);
-  }
-
-  /**
-   * Setter for the anchor attribute.
-   *
-   * @param {string} anchor - anchor of the stim
-   * @param {boolean} [log= false] - whether or not to log
-   */
-  setAnchor(anchor = "center", log = false) {
-    this._setAttribute("anchor", anchor, log);
-    if (this._pixi !== undefined) {
-      const anchorNum = this._anchorTextToNum(this._anchor);
-      if (this._pixi.anchor !== undefined) {
-        this._pixi.anchor.x = anchorNum[0];
-        this._pixi.anchor.y = anchorNum[1];
-      } else {
-        this._pixi.pivot.x =
-          anchorNum[0] * this._pixi.scale.x * this._pixi.width;
-        this._pixi.pivot.y =
-          anchorNum[1] * this._pixi.scale.y * this._pixi.height;
-      }
-    }
   }
 
   /**
@@ -247,9 +112,9 @@ export class VisualStim extends util.mix(MinimalStim).with(WindowMixin) {
    */
   _estimateBoundingBox() {
     throw {
-      origin: "VisualStim._estimateBoundingBox",
       context: `when estimating the bounding box of visual stimulus: ${this._name}`,
       error: "this method is abstract and should not be called.",
+      origin: "VisualStim._estimateBoundingBox",
     };
   }
 
@@ -304,5 +169,141 @@ export class VisualStim extends util.mix(MinimalStim).with(WindowMixin) {
         this._estimateBoundingBox();
       }
     };
+  }
+
+  /**
+   * Determine whether an object is inside the bounding box of the stimulus.
+   *
+   * @param {Object} object - the object
+   * @param {string} units - the units
+   * @return {boolean} whether or not the object is inside the bounding box of the stimulus
+   */
+  contains(object, units) {
+    // get the position of the object, in pixel coordinates:
+    const objectPos_px = util.getPositionFromObject(object, units);
+
+    if (typeof objectPos_px === "undefined") {
+      throw {
+        context:
+          "when determining whether VisualStim: " +
+          this._name +
+          " contains object: " +
+          util.toString(object),
+        error: "unable to determine the position of the object",
+        origin: "VisualStim.contains",
+      };
+    }
+
+    // test for inclusion:
+    return this._getBoundingBox_px().contains(objectPos_px[0], objectPos_px[1]);
+  }
+
+  /**
+   * Force a refresh of the stimulus.
+   *
+   * refresh() is called, in particular, when the Window is resized.
+   */
+  refresh() {
+    this._onChange(true, true)();
+  }
+
+  /**
+   * Setter for the anchor attribute.
+   *
+   * @param {string} anchor - anchor of the stim
+   * @param {boolean} [log= false] - whether or not to log
+   */
+  setAnchor(anchor = "center", log = false) {
+    this._setAttribute("anchor", anchor, log);
+    if (this._pixi !== undefined) {
+      const anchorNum = this._anchorTextToNum(this._anchor);
+      if (this._pixi.anchor !== undefined) {
+        this._pixi.anchor.x = anchorNum[0];
+        this._pixi.anchor.y = anchorNum[1];
+      } else {
+        this._pixi.pivot.x =
+          anchorNum[0] * this._pixi.scale.x * this._pixi.width;
+        this._pixi.pivot.y =
+          anchorNum[1] * this._pixi.scale.y * this._pixi.height;
+      }
+    }
+  }
+
+  /**
+   * Setter for the depth attribute.
+   *
+   * @param {Array.<number>} depth - order in which stimuli is rendered, kind of css's z-index with a negative sign.
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setDepth(depth = 0, log = false) {
+    this._setAttribute("depth", depth, log);
+    if (this._pixi) {
+      this._pixi.zIndex = -this._depth;
+    }
+  }
+
+  /**
+   * Setter for the orientation attribute.
+   *
+   * @param {number} ori - the orientation in degree with 0 as the vertical position, positive values rotate clockwise.
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setOri(ori, log = false) {
+    const hasChanged = this._setAttribute("ori", ori, log);
+
+    if (hasChanged) {
+      let radians = -ori * 0.017453292519943295;
+      this._rotationMatrix = [
+        [Math.cos(radians), -Math.sin(radians)],
+        [Math.sin(radians), Math.cos(radians)],
+      ];
+
+      if (this._pixi instanceof PIXI.DisplayObject) {
+        this._pixi.rotation = (-ori * Math.PI) / 180;
+      } else {
+        this._onChange(true, true)();
+      }
+    }
+  }
+
+  /**
+   * Setter for the position attribute.
+   *
+   * @param {Array.<number>} pos - position of the center of the stimulus, in stimulus units
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setPos(pos, log = false) {
+    const prevPos = this._pos;
+    const hasChanged = this._setAttribute("pos", util.toNumerical(pos), log);
+
+    if (hasChanged) {
+      this._needUpdate = true;
+
+      // update the bounding box, without calling _estimateBoundingBox:
+      this._boundingBox.x += this._pos[0] - prevPos[0];
+      this._boundingBox.y += this._pos[1] - prevPos[1];
+    }
+  }
+
+  /**
+   * Setter for the size attribute.
+   *
+   * @param {undefined | null | number | number[]} size - the stimulus size
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setSize(size, log = false) {
+    // size is either undefined, null, or a tuple of numbers:
+    if (typeof size !== "undefined" && size !== null) {
+      size = util.toNumerical(size);
+      if (!Array.isArray(size)) {
+        size = [size, size];
+      }
+    }
+
+    const hasChanged = this._setAttribute("size", size, log);
+
+    if (hasChanged) {
+      this._onChange(true, true)();
+    }
   }
 }

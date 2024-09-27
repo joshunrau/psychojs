@@ -7,12 +7,13 @@
  */
 
 import * as PIXI from "pixi.js-legacy";
+
+import { Camera } from "../hardware";
 import { Color } from "../util/Color.js";
 import { ColorMixin } from "../util/ColorMixin.js";
 import { to_pixiPoint } from "../util/Pixi.js";
 import * as util from "../util/Util.js";
 import { VisualStim } from "./VisualStim.js";
-import { Camera } from "../hardware";
 
 /**
  * Image Stimulus.
@@ -47,40 +48,40 @@ export class ImageStim extends util.mix(VisualStim).with(ColorMixin) {
    * @param {number} [options.blurVal= 0] - the blur value. Goes 0 to as hish as you like. 0 is no blur.
    */
   constructor({
-    name,
-    win,
-    image,
-    mask,
-    pos,
     anchor,
-    units,
-    ori,
-    size,
-    color,
-    opacity,
-    contrast,
-    texRes,
-    depth,
-    interpolate,
-    flipHoriz,
-    flipVert,
+    aspectRatio,
     autoDraw,
     autoLog,
-    aspectRatio,
     blurVal,
+    color,
+    contrast,
+    depth,
+    flipHoriz,
+    flipVert,
+    image,
+    interpolate,
+    mask,
+    name,
+    opacity,
+    ori,
+    pos,
+    size,
+    texRes,
+    units,
+    win,
   } = {}) {
     super({
-      name,
-      win,
-      units,
-      ori,
-      opacity,
-      depth,
-      pos,
       anchor,
-      size,
       autoDraw,
       autoLog,
+      depth,
+      name,
+      opacity,
+      ori,
+      pos,
+      size,
+      units,
+      win,
     });
 
     // Holds an instance of PIXI blur filter. Used if blur value is passed.
@@ -123,172 +124,6 @@ export class ImageStim extends util.mix(VisualStim).with(ColorMixin) {
   }
 
   /**
-   * Setter for the image attribute.
-   *
-   * @param {HTMLImageElement | string} image - the name of the image resource or HTMLImageElement corresponding to the image
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setImage(image, log = false) {
-    const response = {
-      origin: "ImageStim.setImage",
-      context: "when setting the image of ImageStim: " + this._name,
-    };
-
-    try {
-      // image is undefined: that's fine but we raise a warning in case this is a symptom of an actual problem
-      if (typeof image === "undefined") {
-        this.psychoJS.logger.warn(
-          "setting the image of ImageStim: " +
-            this._name +
-            " with argument: undefined.",
-        );
-        this.psychoJS.logger.debug(
-          "set the image of ImageStim: " + this._name + " as: undefined",
-        );
-      } else {
-        // image is a string: it should be the name of a resource, which we load
-        if (typeof image === "string") {
-          image = this.psychoJS.serverManager.getResource(image);
-        }
-
-        if (image instanceof Camera) {
-          const video = image.getVideo();
-          // TODO remove previous one if there is one
-          // document.body.appendChild(video);
-          image = video;
-        }
-
-        // image should now be either an HTMLImageElement or an HTMLVideoElement:
-        if (image instanceof HTMLImageElement) {
-          this.psychoJS.logger.debug(
-            "set the image of ImageStim: " +
-              this._name +
-              " as: src= " +
-              image.src +
-              ", size= " +
-              image.width +
-              "x" +
-              image.height,
-          );
-        } else if (image instanceof HTMLVideoElement) {
-          this.psychoJS.logger.debug(
-            `set the image of ImageStim: ${this._name} as: src= ${image.src}, size= ${image.videoWidth}x${image.videoHeight}, duration= ${image.duration}s`,
-          );
-        } else {
-          throw (
-            "the argument: " +
-            image.toString() +
-            ' is neither an image nor a video" }'
-          );
-        }
-      }
-
-      const existingImage = this.getImage();
-      const hasChanged = existingImage ? existingImage.src !== image.src : true;
-
-      this._setAttribute("image", image, log);
-
-      if (hasChanged) {
-        this._onChange(true, true)();
-      }
-    } catch (error) {
-      throw Object.assign(response, { error });
-    }
-  }
-
-  /**
-   * Setter for the mask attribute.
-   *
-   * @param {HTMLImageElement | string} mask - the name of the mask resource or HTMLImageElement corresponding to the mask
-   * @param {boolean} [log= false] - whether of not to log
-   */
-  setMask(mask, log = false) {
-    const response = {
-      origin: "ImageStim.setMask",
-      context: "when setting the mask of ImageStim: " + this._name,
-    };
-
-    try {
-      // mask is undefined: that's fine but we raise a warning in case this is a sympton of an actual problem
-      if (typeof mask === "undefined") {
-        this.psychoJS.logger.warn(
-          "setting the mask of ImageStim: " +
-            this._name +
-            " with argument: undefined.",
-        );
-        this.psychoJS.logger.debug(
-          "set the mask of ImageStim: " + this._name + " as: undefined",
-        );
-      } else {
-        // mask is a string: it should be the name of a resource, which we load
-        if (typeof mask === "string") {
-          mask = this.psychoJS.serverManager.getResource(mask);
-        }
-
-        // mask should now be an actual HTMLImageElement: we raise an error if it is not
-        if (!(mask instanceof HTMLImageElement)) {
-          throw "the argument: " + mask.toString() + ' is not an image" }';
-        }
-
-        this.psychoJS.logger.debug(
-          "set the mask of ImageStim: " +
-            this._name +
-            " as: src= " +
-            mask.src +
-            ", size= " +
-            mask.width +
-            "x" +
-            mask.height,
-        );
-      }
-
-      this._setAttribute("mask", mask, log);
-
-      this._onChange(true, false)();
-    } catch (error) {
-      throw Object.assign(response, { error });
-    }
-  }
-
-  /**
-   * Whether to interpolate (linearly) the texture in the stimulus.
-   *
-   * @param {boolean} interpolate - interpolate or not.
-   * @param {boolean} [log=false] - whether or not to log
-   */
-  setInterpolate(interpolate = false, log = false) {
-    this._setAttribute("interpolate", interpolate, log);
-    if (this._pixi instanceof PIXI.Sprite) {
-      this._pixi.texture.baseTexture.scaleMode = interpolate
-        ? PIXI.SCALE_MODES.LINEAR
-        : PIXI.SCALE_MODES.NEAREST;
-      this._pixi.texture.baseTexture.update();
-    }
-  }
-
-  setBlurVal(blurVal = 0, log = false) {
-    this._setAttribute("blurVal", blurVal, log);
-    if (this._pixi instanceof PIXI.Sprite) {
-      if (this._blurFilter === undefined) {
-        this._blurFilter = new PIXI.filters.BlurFilter();
-        this._blurFilter.blur = blurVal;
-      } else {
-        this._blurFilter.blur = blurVal;
-      }
-
-      // this._pixi might get destroyed and recreated again with no filters.
-      if (
-        this._pixi.filters instanceof Array &&
-        this._pixi.filters.indexOf(this._blurFilter) === -1
-      ) {
-        this._pixi.filters.push(this._blurFilter);
-      } else {
-        this._pixi.filters = [this._blurFilter];
-      }
-    }
-  }
-
-  /**
    * Estimate the bounding box.
    *
    * @override
@@ -306,6 +141,54 @@ export class ImageStim extends util.mix(VisualStim).with(ColorMixin) {
     }
 
     // TODO take the orientation into account
+  }
+
+  /**
+   * Get the size of the display image, which is either that of the ImageStim or that of the image
+   * it contains.
+   *
+   * @protected
+   * @return {number[]} the size of the displayed image
+   */
+  _getDisplaySize() {
+    let displaySize = this.size;
+
+    if (typeof displaySize === "undefined") {
+      // use the size of the texture, if we have access to it:
+      if (typeof this._texture !== "undefined" && this._texture.width > 0) {
+        const textureSize = [this._texture.width, this._texture.height];
+        displaySize = util.to_unit(textureSize, "pix", this.win, this.units);
+      }
+    } else {
+      if (this.aspectRatio === ImageStim.AspectRatioStrategy.FIT_TO_WIDTH) {
+        // use the size of the texture, if we have access to it:
+        if (typeof this._texture !== "undefined" && this._texture.width > 0) {
+          displaySize = [
+            displaySize[0],
+            (displaySize[0] * this._texture.height) / this._texture.width,
+          ];
+        }
+      } else if (
+        this.aspectRatio === ImageStim.AspectRatioStrategy.FIT_TO_HEIGHT
+      ) {
+        // use the size of the texture, if we have access to it:
+        if (typeof this._texture !== "undefined" && this._texture.width > 0) {
+          displaySize = [
+            (displaySize[1] * this._texture.width) / this._texture.height,
+            displaySize[1],
+          ];
+        }
+      } else if (
+        this.aspectRatio === ImageStim.AspectRatioStrategy.HORIZONTAL_TILING
+      ) {
+        // use the size of the texture, if we have access to it:
+        if (typeof this._texture !== "undefined" && this._texture.width > 0) {
+          displaySize = [displaySize[0], this._texture.height];
+        }
+      }
+    }
+
+    return displaySize;
   }
 
   /**
@@ -446,52 +329,170 @@ export class ImageStim extends util.mix(VisualStim).with(ColorMixin) {
     this._estimateBoundingBox();
   }
 
-  /**
-   * Get the size of the display image, which is either that of the ImageStim or that of the image
-   * it contains.
-   *
-   * @protected
-   * @return {number[]} the size of the displayed image
-   */
-  _getDisplaySize() {
-    let displaySize = this.size;
-
-    if (typeof displaySize === "undefined") {
-      // use the size of the texture, if we have access to it:
-      if (typeof this._texture !== "undefined" && this._texture.width > 0) {
-        const textureSize = [this._texture.width, this._texture.height];
-        displaySize = util.to_unit(textureSize, "pix", this.win, this.units);
+  setBlurVal(blurVal = 0, log = false) {
+    this._setAttribute("blurVal", blurVal, log);
+    if (this._pixi instanceof PIXI.Sprite) {
+      if (this._blurFilter === undefined) {
+        this._blurFilter = new PIXI.filters.BlurFilter();
+        this._blurFilter.blur = blurVal;
+      } else {
+        this._blurFilter.blur = blurVal;
       }
-    } else {
-      if (this.aspectRatio === ImageStim.AspectRatioStrategy.FIT_TO_WIDTH) {
-        // use the size of the texture, if we have access to it:
-        if (typeof this._texture !== "undefined" && this._texture.width > 0) {
-          displaySize = [
-            displaySize[0],
-            (displaySize[0] * this._texture.height) / this._texture.width,
-          ];
-        }
-      } else if (
-        this.aspectRatio === ImageStim.AspectRatioStrategy.FIT_TO_HEIGHT
+
+      // this._pixi might get destroyed and recreated again with no filters.
+      if (
+        this._pixi.filters instanceof Array &&
+        this._pixi.filters.indexOf(this._blurFilter) === -1
       ) {
-        // use the size of the texture, if we have access to it:
-        if (typeof this._texture !== "undefined" && this._texture.width > 0) {
-          displaySize = [
-            (displaySize[1] * this._texture.width) / this._texture.height,
-            displaySize[1],
-          ];
-        }
-      } else if (
-        this.aspectRatio === ImageStim.AspectRatioStrategy.HORIZONTAL_TILING
-      ) {
-        // use the size of the texture, if we have access to it:
-        if (typeof this._texture !== "undefined" && this._texture.width > 0) {
-          displaySize = [displaySize[0], this._texture.height];
-        }
+        this._pixi.filters.push(this._blurFilter);
+      } else {
+        this._pixi.filters = [this._blurFilter];
       }
     }
+  }
 
-    return displaySize;
+  /**
+   * Setter for the image attribute.
+   *
+   * @param {HTMLImageElement | string} image - the name of the image resource or HTMLImageElement corresponding to the image
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setImage(image, log = false) {
+    const response = {
+      context: "when setting the image of ImageStim: " + this._name,
+      origin: "ImageStim.setImage",
+    };
+
+    try {
+      // image is undefined: that's fine but we raise a warning in case this is a symptom of an actual problem
+      if (typeof image === "undefined") {
+        this.psychoJS.logger.warn(
+          "setting the image of ImageStim: " +
+            this._name +
+            " with argument: undefined.",
+        );
+        this.psychoJS.logger.debug(
+          "set the image of ImageStim: " + this._name + " as: undefined",
+        );
+      } else {
+        // image is a string: it should be the name of a resource, which we load
+        if (typeof image === "string") {
+          image = this.psychoJS.serverManager.getResource(image);
+        }
+
+        if (image instanceof Camera) {
+          const video = image.getVideo();
+          // TODO remove previous one if there is one
+          // document.body.appendChild(video);
+          image = video;
+        }
+
+        // image should now be either an HTMLImageElement or an HTMLVideoElement:
+        if (image instanceof HTMLImageElement) {
+          this.psychoJS.logger.debug(
+            "set the image of ImageStim: " +
+              this._name +
+              " as: src= " +
+              image.src +
+              ", size= " +
+              image.width +
+              "x" +
+              image.height,
+          );
+        } else if (image instanceof HTMLVideoElement) {
+          this.psychoJS.logger.debug(
+            `set the image of ImageStim: ${this._name} as: src= ${image.src}, size= ${image.videoWidth}x${image.videoHeight}, duration= ${image.duration}s`,
+          );
+        } else {
+          throw (
+            "the argument: " +
+            image.toString() +
+            ' is neither an image nor a video" }'
+          );
+        }
+      }
+
+      const existingImage = this.getImage();
+      const hasChanged = existingImage ? existingImage.src !== image.src : true;
+
+      this._setAttribute("image", image, log);
+
+      if (hasChanged) {
+        this._onChange(true, true)();
+      }
+    } catch (error) {
+      throw Object.assign(response, { error });
+    }
+  }
+
+  /**
+   * Whether to interpolate (linearly) the texture in the stimulus.
+   *
+   * @param {boolean} interpolate - interpolate or not.
+   * @param {boolean} [log=false] - whether or not to log
+   */
+  setInterpolate(interpolate = false, log = false) {
+    this._setAttribute("interpolate", interpolate, log);
+    if (this._pixi instanceof PIXI.Sprite) {
+      this._pixi.texture.baseTexture.scaleMode = interpolate
+        ? PIXI.SCALE_MODES.LINEAR
+        : PIXI.SCALE_MODES.NEAREST;
+      this._pixi.texture.baseTexture.update();
+    }
+  }
+
+  /**
+   * Setter for the mask attribute.
+   *
+   * @param {HTMLImageElement | string} mask - the name of the mask resource or HTMLImageElement corresponding to the mask
+   * @param {boolean} [log= false] - whether of not to log
+   */
+  setMask(mask, log = false) {
+    const response = {
+      context: "when setting the mask of ImageStim: " + this._name,
+      origin: "ImageStim.setMask",
+    };
+
+    try {
+      // mask is undefined: that's fine but we raise a warning in case this is a sympton of an actual problem
+      if (typeof mask === "undefined") {
+        this.psychoJS.logger.warn(
+          "setting the mask of ImageStim: " +
+            this._name +
+            " with argument: undefined.",
+        );
+        this.psychoJS.logger.debug(
+          "set the mask of ImageStim: " + this._name + " as: undefined",
+        );
+      } else {
+        // mask is a string: it should be the name of a resource, which we load
+        if (typeof mask === "string") {
+          mask = this.psychoJS.serverManager.getResource(mask);
+        }
+
+        // mask should now be an actual HTMLImageElement: we raise an error if it is not
+        if (!(mask instanceof HTMLImageElement)) {
+          throw "the argument: " + mask.toString() + ' is not an image" }';
+        }
+
+        this.psychoJS.logger.debug(
+          "set the mask of ImageStim: " +
+            this._name +
+            " as: src= " +
+            mask.src +
+            ", size= " +
+            mask.width +
+            "x" +
+            mask.height,
+        );
+      }
+
+      this._setAttribute("mask", mask, log);
+
+      this._onChange(true, false)();
+    } catch (error) {
+      throw Object.assign(response, { error });
+    }
   }
 }
 
@@ -502,8 +503,8 @@ export class ImageStim extends util.mix(VisualStim).with(ColorMixin) {
  * @readonly
  */
 ImageStim.AspectRatioStrategy = {
+  FIT_TO_HEIGHT: Symbol.for("FIT_TO_HEIGHT"),
   FIT_TO_WIDTH: Symbol.for("FIT_TO_WIDTH"),
   HORIZONTAL_TILING: Symbol.for("HORIZONTAL_TILING"),
-  FIT_TO_HEIGHT: Symbol.for("FIT_TO_HEIGHT"),
   VARIABLE: Symbol.for("VARIABLE"),
 };

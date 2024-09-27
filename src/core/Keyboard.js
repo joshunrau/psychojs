@@ -50,11 +50,11 @@ export class Keyboard extends PsychObject {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    psychoJS,
-    bufferSize = 10000,
-    waitForStart = false,
-    clock,
     autoLog = false,
+    bufferSize = 10000,
+    clock,
+    psychoJS,
+    waitForStart = false,
   } = {}) {
     super(psychoJS);
 
@@ -77,207 +77,6 @@ export class Keyboard extends PsychObject {
 
     // add key listeners:
     this._addKeyListeners();
-  }
-
-  /**
-   * Start recording keyboard events.
-   */
-  start() {
-    this._status = PsychoJS.Status.STARTED;
-  }
-
-  /**
-   * Stop recording keyboard events.
-   */
-  stop() {
-    this._status = PsychoJS.Status.STOPPED;
-  }
-
-  /**
-   * @typedef Keyboard.KeyEvent
-   *
-   * @property {string} W3C key code
-   * @property {string} W3C key
-   * @property {string} pyglet key
-   * @property {module:core.Keyboard#KeyStatus} key status
-   * @property {number} timestamp (in seconds)
-   */
-  /**
-   * Get the list of those keyboard events still in the buffer, i.e. those that have not been
-   * previously cleared by calls to getKeys with clear = true.
-   *
-   * @return {Keyboard.KeyEvent[]} the list of events still in the buffer
-   */
-  getEvents() {
-    if (this._bufferLength === 0) {
-      return [];
-    }
-
-    // iterate over the buffer, from start to end, and discard the null event:
-    let filteredEvents = [];
-    const bufferWrap = this._bufferLength === this._bufferSize;
-    let i = bufferWrap ? this._bufferIndex : -1;
-    do {
-      i = (i + 1) % this._bufferSize;
-      const keyEvent = this._circularBuffer[i];
-      if (keyEvent) {
-        filteredEvents.push(keyEvent);
-      }
-    } while (i !== this._bufferIndex);
-
-    return filteredEvents;
-  }
-
-  /**
-   * Get the list of keys pressed or pushed by the participant.
-   *
-   * @param {Object} options
-   * @param {string[]} [options.keyList= []]] - the list of keys to consider. If keyList is empty, we consider all keys.
-   * Note that we use pyglet keys here, to make the PsychoJs code more homogeneous with PsychoPy.
-   * @param {boolean} [options.waitRelease= true] - whether or not to include those keys pressed but not released. If
-   * waitRelease = false, key presses without a corresponding key release will have an undefined duration.
-   * @param {boolean} [options.clear= false] - whether or not to keep in the buffer the key presses or pushes for a subsequent call to getKeys. If a keyList has been given and clear = true, we only remove from the buffer those keys in keyList
-   * @return {KeyPress[]} the list of keys that were pressed (keydown followed by keyup) or pushed
-   * (keydown with no subsequent keyup at the time getKeys is called).
-   */
-  getKeys({ keyList = [], waitRelease = true, clear = true } = {}) {
-    // if nothing in the buffer, return immediately:
-    if (this._bufferLength === 0) {
-      return [];
-    }
-
-    let keyPresses = [];
-
-    // iterate over the circular buffer, looking for keyup events:
-    const bufferWrap = this._bufferLength === this._bufferSize;
-    let i = bufferWrap ? this._bufferIndex : -1;
-    do {
-      i = (i + 1) % this._bufferSize;
-
-      const keyEvent = this._circularBuffer[i];
-      if (keyEvent && keyEvent.status === Keyboard.KeyStatus.KEY_UP) {
-        // if the keylist is empty of the key is in the keyList:
-        if (keyList.length === 0 || keyList.includes(keyEvent.pigletKey)) {
-          // look for a corresponding, preceding keydown event:
-          const precedingKeydownIndex = keyEvent.keydownIndex;
-          if (typeof precedingKeydownIndex !== "undefined") {
-            const precedingKeydownEvent =
-              this._circularBuffer[precedingKeydownIndex];
-            if (precedingKeydownEvent) {
-              // prepare KeyPress and add it to the array:
-              const tDown = precedingKeydownEvent.timestamp;
-              const keyPress = new KeyPress(
-                keyEvent.code,
-                tDown,
-                keyEvent.pigletKey,
-              );
-              keyPress.rt = tDown - this._clock.getLastResetTime();
-              keyPress.duration =
-                keyEvent.timestamp - precedingKeydownEvent.timestamp;
-              keyPresses.push(keyPress);
-
-              if (clear) {
-                this._circularBuffer[precedingKeydownIndex] = null;
-              }
-            }
-          }
-
-          /* old approach: the circular buffer contains independent keydown and keyup events:
-					let j = i - 1;
-					do {
-						if (j === -1 && bufferWrap)
-							j = this._bufferSize - 1;
-
-						const precedingKeyEvent = this._circularBuffer[j];
-
-						if (precedingKeyEvent &&
-							(precedingKeyEvent.key === keyEvent.key) &&
-							(precedingKeyEvent.status === Keyboard.KeyStatus.KEY_DOWN)) {
-							duration = keyEvent.timestamp - precedingKeyEvent.timestamp;
-
-							if (clear)
-							// rather than modify the circular buffer, which is computationally expensive,
-							// we simply nullify the keyEvent:
-								this._circularBuffer[j] = null;
-
-							break;
-						}
-
-						j = j - 1;
-					} while ((bufferWrap && j !== i) || (j > -1));*/
-
-          if (clear) {
-            this._circularBuffer[i] = null;
-          }
-        }
-      }
-    } while (i !== this._bufferIndex);
-
-    // if waitRelease = false, we iterate again over the map of unmatched keydown events:
-    if (!waitRelease) {
-      for (const unmatchedKeyDownIndex of this._unmatchedKeydownMap.values()) {
-        const keyEvent = this._circularBuffer[unmatchedKeyDownIndex];
-        if (keyEvent) {
-          // check that the key is in the keyList:
-          if (keyList.length === 0 || keyList.includes(keyEvent.pigletKey)) {
-            const tDown = keyEvent.timestamp;
-            const keyPress = new KeyPress(
-              keyEvent.code,
-              tDown,
-              keyEvent.pigletKey,
-            );
-            keyPress.rt = tDown - this._clock.getLastResetTime();
-            keyPresses.push(keyPress);
-
-            if (clear) {
-              this._unmatchedKeydownMap.delete(keyEvent.code);
-              this._circularBuffer[unmatchedKeyDownIndex] = null;
-            }
-          }
-        }
-      }
-      /* old approach: the circular buffer contains independent keydown and keyup events:
-			let i = bufferWrap ? this._bufferIndex : -1;
-			do {
-				i = (i + 1) % this._bufferSize;
-
-				const keyEvent = this._circularBuffer[i];
-				if (keyEvent && keyEvent.status === Keyboard.KeyStatus.KEY_DOWN) {
-					// check that the key is in the keyList:
-					const pigletKey = EventManager.w3c2pyglet(keyEvent.code);
-					if (keyList.length === 0 || keyList.includes(pigletKey)) {
-						keyPresses.push(new KeyPress(keyEvent.code, keyEvent.timestamp, pigletKey));
-
-						if (clear)
-							// rather than modify the circular buffer, which is computationally expensive, we simply nullify
-							// the keyEvent:
-							this._circularBuffer[i] = null;
-					}
-				}
-
-			} while (i !== this._bufferIndex);*/
-    }
-
-    // if clear = true and the keyList is empty, we clear all the events:
-    if (clear && keyList.length === 0) {
-      this.clearEvents();
-    }
-
-    return keyPresses;
-  }
-
-  /**
-   * Clear all events and resets the circular buffers.
-   */
-  clearEvents() {
-    // circular buffer of key events (keydown and keyup):
-    this._circularBuffer = new Array(this._bufferSize);
-    this._bufferLength = 0;
-    this._bufferIndex = -1;
-    this._previousKeydownKey = undefined;
-
-    // (code => circular buffer index) map of keydown events not yet matched to keyup events:
-    this._unmatchedKeydownMap = new Map();
   }
 
   /**
@@ -412,6 +211,207 @@ export class Keyboard extends PsychObject {
         event.stopPropagation();
       },
     );
+  }
+
+  /**
+   * Clear all events and resets the circular buffers.
+   */
+  clearEvents() {
+    // circular buffer of key events (keydown and keyup):
+    this._circularBuffer = new Array(this._bufferSize);
+    this._bufferLength = 0;
+    this._bufferIndex = -1;
+    this._previousKeydownKey = undefined;
+
+    // (code => circular buffer index) map of keydown events not yet matched to keyup events:
+    this._unmatchedKeydownMap = new Map();
+  }
+
+  /**
+   * @typedef Keyboard.KeyEvent
+   *
+   * @property {string} W3C key code
+   * @property {string} W3C key
+   * @property {string} pyglet key
+   * @property {module:core.Keyboard#KeyStatus} key status
+   * @property {number} timestamp (in seconds)
+   */
+  /**
+   * Get the list of those keyboard events still in the buffer, i.e. those that have not been
+   * previously cleared by calls to getKeys with clear = true.
+   *
+   * @return {Keyboard.KeyEvent[]} the list of events still in the buffer
+   */
+  getEvents() {
+    if (this._bufferLength === 0) {
+      return [];
+    }
+
+    // iterate over the buffer, from start to end, and discard the null event:
+    let filteredEvents = [];
+    const bufferWrap = this._bufferLength === this._bufferSize;
+    let i = bufferWrap ? this._bufferIndex : -1;
+    do {
+      i = (i + 1) % this._bufferSize;
+      const keyEvent = this._circularBuffer[i];
+      if (keyEvent) {
+        filteredEvents.push(keyEvent);
+      }
+    } while (i !== this._bufferIndex);
+
+    return filteredEvents;
+  }
+
+  /**
+   * Get the list of keys pressed or pushed by the participant.
+   *
+   * @param {Object} options
+   * @param {string[]} [options.keyList= []]] - the list of keys to consider. If keyList is empty, we consider all keys.
+   * Note that we use pyglet keys here, to make the PsychoJs code more homogeneous with PsychoPy.
+   * @param {boolean} [options.waitRelease= true] - whether or not to include those keys pressed but not released. If
+   * waitRelease = false, key presses without a corresponding key release will have an undefined duration.
+   * @param {boolean} [options.clear= false] - whether or not to keep in the buffer the key presses or pushes for a subsequent call to getKeys. If a keyList has been given and clear = true, we only remove from the buffer those keys in keyList
+   * @return {KeyPress[]} the list of keys that were pressed (keydown followed by keyup) or pushed
+   * (keydown with no subsequent keyup at the time getKeys is called).
+   */
+  getKeys({ clear = true, keyList = [], waitRelease = true } = {}) {
+    // if nothing in the buffer, return immediately:
+    if (this._bufferLength === 0) {
+      return [];
+    }
+
+    let keyPresses = [];
+
+    // iterate over the circular buffer, looking for keyup events:
+    const bufferWrap = this._bufferLength === this._bufferSize;
+    let i = bufferWrap ? this._bufferIndex : -1;
+    do {
+      i = (i + 1) % this._bufferSize;
+
+      const keyEvent = this._circularBuffer[i];
+      if (keyEvent && keyEvent.status === Keyboard.KeyStatus.KEY_UP) {
+        // if the keylist is empty of the key is in the keyList:
+        if (keyList.length === 0 || keyList.includes(keyEvent.pigletKey)) {
+          // look for a corresponding, preceding keydown event:
+          const precedingKeydownIndex = keyEvent.keydownIndex;
+          if (typeof precedingKeydownIndex !== "undefined") {
+            const precedingKeydownEvent =
+              this._circularBuffer[precedingKeydownIndex];
+            if (precedingKeydownEvent) {
+              // prepare KeyPress and add it to the array:
+              const tDown = precedingKeydownEvent.timestamp;
+              const keyPress = new KeyPress(
+                keyEvent.code,
+                tDown,
+                keyEvent.pigletKey,
+              );
+              keyPress.rt = tDown - this._clock.getLastResetTime();
+              keyPress.duration =
+                keyEvent.timestamp - precedingKeydownEvent.timestamp;
+              keyPresses.push(keyPress);
+
+              if (clear) {
+                this._circularBuffer[precedingKeydownIndex] = null;
+              }
+            }
+          }
+
+          /* old approach: the circular buffer contains independent keydown and keyup events:
+					let j = i - 1;
+					do {
+						if (j === -1 && bufferWrap)
+							j = this._bufferSize - 1;
+
+						const precedingKeyEvent = this._circularBuffer[j];
+
+						if (precedingKeyEvent &&
+							(precedingKeyEvent.key === keyEvent.key) &&
+							(precedingKeyEvent.status === Keyboard.KeyStatus.KEY_DOWN)) {
+							duration = keyEvent.timestamp - precedingKeyEvent.timestamp;
+
+							if (clear)
+							// rather than modify the circular buffer, which is computationally expensive,
+							// we simply nullify the keyEvent:
+								this._circularBuffer[j] = null;
+
+							break;
+						}
+
+						j = j - 1;
+					} while ((bufferWrap && j !== i) || (j > -1));*/
+
+          if (clear) {
+            this._circularBuffer[i] = null;
+          }
+        }
+      }
+    } while (i !== this._bufferIndex);
+
+    // if waitRelease = false, we iterate again over the map of unmatched keydown events:
+    if (!waitRelease) {
+      for (const unmatchedKeyDownIndex of this._unmatchedKeydownMap.values()) {
+        const keyEvent = this._circularBuffer[unmatchedKeyDownIndex];
+        if (keyEvent) {
+          // check that the key is in the keyList:
+          if (keyList.length === 0 || keyList.includes(keyEvent.pigletKey)) {
+            const tDown = keyEvent.timestamp;
+            const keyPress = new KeyPress(
+              keyEvent.code,
+              tDown,
+              keyEvent.pigletKey,
+            );
+            keyPress.rt = tDown - this._clock.getLastResetTime();
+            keyPresses.push(keyPress);
+
+            if (clear) {
+              this._unmatchedKeydownMap.delete(keyEvent.code);
+              this._circularBuffer[unmatchedKeyDownIndex] = null;
+            }
+          }
+        }
+      }
+      /* old approach: the circular buffer contains independent keydown and keyup events:
+			let i = bufferWrap ? this._bufferIndex : -1;
+			do {
+				i = (i + 1) % this._bufferSize;
+
+				const keyEvent = this._circularBuffer[i];
+				if (keyEvent && keyEvent.status === Keyboard.KeyStatus.KEY_DOWN) {
+					// check that the key is in the keyList:
+					const pigletKey = EventManager.w3c2pyglet(keyEvent.code);
+					if (keyList.length === 0 || keyList.includes(pigletKey)) {
+						keyPresses.push(new KeyPress(keyEvent.code, keyEvent.timestamp, pigletKey));
+
+						if (clear)
+							// rather than modify the circular buffer, which is computationally expensive, we simply nullify
+							// the keyEvent:
+							this._circularBuffer[i] = null;
+					}
+				}
+
+			} while (i !== this._bufferIndex);*/
+    }
+
+    // if clear = true and the keyList is empty, we clear all the events:
+    if (clear && keyList.length === 0) {
+      this.clearEvents();
+    }
+
+    return keyPresses;
+  }
+
+  /**
+   * Start recording keyboard events.
+   */
+  start() {
+    this._status = PsychoJS.Status.STARTED;
+  }
+
+  /**
+   * Stop recording keyboard events.
+   */
+  stop() {
+    this._status = PsychoJS.Status.STOPPED;
   }
 }
 

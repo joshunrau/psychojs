@@ -7,6 +7,7 @@
  */
 
 import * as Tone from "tone";
+
 import { isNumeric } from "../util/Util.js";
 import { SoundPlayer } from "./SoundPlayer.js";
 
@@ -27,13 +28,13 @@ export class TonePlayer extends SoundPlayer {
    * @param {number} [options.loops= 0] - how many times to repeat the tone after it has played once. If loops == -1, the tone will repeat indefinitely until stopped.
    */
   constructor({
-    psychoJS,
-    note = "C4",
-    secs = 0.5,
-    volume = 1.0,
-    loops = 0,
-    soundLibrary = TonePlayer.SoundLibrary.TONE_JS,
     autoLog = true,
+    loops = 0,
+    note = "C4",
+    psychoJS,
+    secs = 0.5,
+    soundLibrary = TonePlayer.SoundLibrary.TONE_JS,
+    volume = 1.0,
   } = {}) {
     super(psychoJS);
 
@@ -96,67 +97,86 @@ export class TonePlayer extends SoundPlayer {
   }
 
   /**
+   * Initialise the sound library.
+   *
+   * <p>Note: if TonePlayer accepts the sound but Tone.js is not available, e.g. if the browser is IE11,
+   * we throw an exception.</p>
+   *
+   * @protected
+   */
+  _initSoundLibrary() {
+    const response = {
+      context: "when initialising the sound library",
+      origin: "TonePlayer._initSoundLibrary",
+    };
+
+    if (this._soundLibrary === TonePlayer.SoundLibrary.TONE_JS) {
+      // check that Tone.js is available:
+      if (typeof Tone === "undefined") {
+        throw Object.assign(response, {
+          error:
+            "Tone.js is not available. A different sound library must be selected. Please contact the experiment designer.",
+        });
+      }
+
+      // start the Tone Transport if it has not started already:
+      if (typeof Tone !== "undefined" && Tone.Transport.state !== "started") {
+        this.psychoJS.logger.info("[PsychoJS] start Tone Transport");
+        Tone.Transport.start(Tone.now());
+
+        // this is necessary to prevent Tone from introducing a delay when triggering a note
+        // ( see https://github.com/Tonejs/Tone.js/issues/306#issuecomment-365989984 )
+        Tone.context.lookAhead = 0;
+      }
+
+      // create a synth: we use a triangular oscillator with hardly any envelope:
+      this._synthOtions = {
+        envelope: {
+          attack: 0.001, // 1ms
+          decay: 0.001, // 1ms
+          release: 0.001, // 1ms
+          sustain: 1,
+        },
+        oscillator: {
+          type: "square", // 'triangle'
+        },
+      };
+      this._synth = new Tone.Synth(this._synthOtions);
+
+      // connect it to a volume node:
+      this._volumeNode = new Tone.Volume(-60 + this._volume * 66);
+      this._synth.connect(this._volumeNode);
+
+      // connect the volume node to the master output:
+      if (typeof this._volumeNode.toDestination === "function") {
+        this._volumeNode.toDestination();
+      } else {
+        this._volumeNode.toMaster();
+      }
+    } else {
+      // create an AudioContext:
+      if (typeof this._audioContext === "undefined") {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+
+        // if AudioContext is not available (e.g. on IE), we throw an exception:
+        if (typeof AudioContext === "undefined") {
+          throw Object.assign(response, {
+            error: `AudioContext is not available on your browser, ${this._psychoJS.browser}, please contact the experiment designer.`,
+          });
+        }
+
+        this._audioContext = new AudioContext();
+      }
+    }
+  }
+
+  /**
    * Get the duration of the sound.
    *
    * @return {number} the duration of the sound, in seconds
    */
   getDuration() {
     return this.duration_s;
-  }
-
-  /**
-   * Set the duration of the tone.
-   *
-   * @param {number} secs - the duration of the tone (in seconds) If secs == -1, the sound will play indefinitely.
-   */
-  setDuration(secs) {
-    this.duration_s = secs;
-  }
-
-  /**
-   * Set the number of loops.
-   *
-   * @param {number} loops - how many times to repeat the track after it has played once. If loops == -1, the track will repeat indefinitely until stopped.
-   */
-  setLoops(loops) {
-    this._loops = loops;
-  }
-
-  /**
-   * Set the volume of the tone.
-   *
-   * @param {Integer} volume - the volume of the tone
-   * @param {boolean} [mute= false] - whether or not to mute the tone
-   */
-  setVolume(volume, mute = false) {
-    this._volume = volume;
-
-    if (this._soundLibrary === TonePlayer.SoundLibrary.TONE_JS) {
-      if (typeof this._volumeNode !== "undefined") {
-        this._volumeNode.mute = mute;
-        this._volumeNode.volume.value = -60 + volume * 66;
-        // this._synth.volume.value = -60 + volume * 66;
-      } else {
-        // TODO
-      }
-    } else {
-      // TODO
-    }
-  }
-
-  /**
-   * Set the note for tone.
-   *
-   * @param {string|number} value - potential frequency or note
-   * @param {number} octave - the octave corresponding to the tone
-   */
-  setTone(value = "C", octave = 4) {
-    const args = TonePlayer.accept(value, octave);
-    this._note = args.note;
-
-    if (typeof this._synth !== "undefined") {
-      this._synth.setNote(this._note);
-    }
   }
 
   /**
@@ -219,6 +239,61 @@ export class TonePlayer extends SoundPlayer {
   }
 
   /**
+   * Set the duration of the tone.
+   *
+   * @param {number} secs - the duration of the tone (in seconds) If secs == -1, the sound will play indefinitely.
+   */
+  setDuration(secs) {
+    this.duration_s = secs;
+  }
+
+  /**
+   * Set the number of loops.
+   *
+   * @param {number} loops - how many times to repeat the track after it has played once. If loops == -1, the track will repeat indefinitely until stopped.
+   */
+  setLoops(loops) {
+    this._loops = loops;
+  }
+
+  /**
+   * Set the note for tone.
+   *
+   * @param {string|number} value - potential frequency or note
+   * @param {number} octave - the octave corresponding to the tone
+   */
+  setTone(value = "C", octave = 4) {
+    const args = TonePlayer.accept(value, octave);
+    this._note = args.note;
+
+    if (typeof this._synth !== "undefined") {
+      this._synth.setNote(this._note);
+    }
+  }
+
+  /**
+   * Set the volume of the tone.
+   *
+   * @param {Integer} volume - the volume of the tone
+   * @param {boolean} [mute= false] - whether or not to mute the tone
+   */
+  setVolume(volume, mute = false) {
+    this._volume = volume;
+
+    if (this._soundLibrary === TonePlayer.SoundLibrary.TONE_JS) {
+      if (typeof this._volumeNode !== "undefined") {
+        this._volumeNode.mute = mute;
+        this._volumeNode.volume.value = -60 + volume * 66;
+        // this._synth.volume.value = -60 + volume * 66;
+      } else {
+        // TODO
+      }
+    } else {
+      // TODO
+    }
+  }
+
+  /**
    * Stop playing the sound immediately.
    */
   stop() {
@@ -233,80 +308,6 @@ export class TonePlayer extends SoundPlayer {
     } else {
       const contextCurrentTime = this._audioContext.currentTime;
       this._webAudioOscillator.stop(contextCurrentTime);
-    }
-  }
-
-  /**
-   * Initialise the sound library.
-   *
-   * <p>Note: if TonePlayer accepts the sound but Tone.js is not available, e.g. if the browser is IE11,
-   * we throw an exception.</p>
-   *
-   * @protected
-   */
-  _initSoundLibrary() {
-    const response = {
-      origin: "TonePlayer._initSoundLibrary",
-      context: "when initialising the sound library",
-    };
-
-    if (this._soundLibrary === TonePlayer.SoundLibrary.TONE_JS) {
-      // check that Tone.js is available:
-      if (typeof Tone === "undefined") {
-        throw Object.assign(response, {
-          error:
-            "Tone.js is not available. A different sound library must be selected. Please contact the experiment designer.",
-        });
-      }
-
-      // start the Tone Transport if it has not started already:
-      if (typeof Tone !== "undefined" && Tone.Transport.state !== "started") {
-        this.psychoJS.logger.info("[PsychoJS] start Tone Transport");
-        Tone.Transport.start(Tone.now());
-
-        // this is necessary to prevent Tone from introducing a delay when triggering a note
-        // ( see https://github.com/Tonejs/Tone.js/issues/306#issuecomment-365989984 )
-        Tone.context.lookAhead = 0;
-      }
-
-      // create a synth: we use a triangular oscillator with hardly any envelope:
-      this._synthOtions = {
-        oscillator: {
-          type: "square", // 'triangle'
-        },
-        envelope: {
-          attack: 0.001, // 1ms
-          decay: 0.001, // 1ms
-          sustain: 1,
-          release: 0.001, // 1ms
-        },
-      };
-      this._synth = new Tone.Synth(this._synthOtions);
-
-      // connect it to a volume node:
-      this._volumeNode = new Tone.Volume(-60 + this._volume * 66);
-      this._synth.connect(this._volumeNode);
-
-      // connect the volume node to the master output:
-      if (typeof this._volumeNode.toDestination === "function") {
-        this._volumeNode.toDestination();
-      } else {
-        this._volumeNode.toMaster();
-      }
-    } else {
-      // create an AudioContext:
-      if (typeof this._audioContext === "undefined") {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-
-        // if AudioContext is not available (e.g. on IE), we throw an exception:
-        if (typeof AudioContext === "undefined") {
-          throw Object.assign(response, {
-            error: `AudioContext is not available on your browser, ${this._psychoJS.browser}, please contact the experiment designer.`,
-          });
-        }
-
-        this._audioContext = new AudioContext();
-      }
     }
   }
 }

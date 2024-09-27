@@ -7,11 +7,12 @@
  * @license Distributed under the terms of the MIT License
  */
 
-import { TrialHandler } from "./TrialHandler.js";
+import seedrandom from "seedrandom";
+
+import * as util from "../util/Util.js";
 import { QuestHandler } from "./QuestHandler.js";
 import { StairHandler } from "./StairHandler.js";
-import * as util from "../util/Util.js";
-import seedrandom from "seedrandom";
+import { TrialHandler } from "./TrialHandler.js";
 
 /**
  * A handler dealing with multiple staircases, simultaneously.
@@ -38,26 +39,26 @@ export class MultiStairHandler extends TrialHandler {
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
   constructor({
-    psychoJS,
-    varName,
-    stairType,
+    autoLog,
     conditions,
     method = TrialHandler.Method.RANDOM,
-    nTrials = 50,
-    randomSeed,
     name,
-    autoLog,
+    nTrials = 50,
+    psychoJS,
+    randomSeed,
+    stairType,
+    varName,
   } = {}) {
     super({
-      psychoJS,
-      name,
       autoLog,
-      seed: randomSeed,
       // note: multiStairHandler is a sequential TrialHandler, we deal with randomness
       // in _nextTrial
       method: TrialHandler.Method.SEQUENTIAL,
-      trialList: Array(nTrials),
+      name,
       nReps: 1,
+      psychoJS,
+      seed: randomSeed,
+      trialList: Array(nTrials),
     });
 
     // now that we have initialised a sequential TrialHandler, we update method:
@@ -107,176 +108,6 @@ export class MultiStairHandler extends TrialHandler {
     }
 
     return undefined;
-  }
-
-  /**
-   * Add a response to the current staircase.
-   *
-   * @param{number} response - the response to the trial, must be either 0 (incorrect or
-   * non-detected) or 1 (correct or detected)
-   * @param{number | undefined} [value] - optional intensity / contrast / threshold
-   */
-  addResponse(response, value) {
-    this._psychoJS.logger.debug(`response= ${response}`);
-
-    // check that response is either 0 or 1:
-    if (response !== 0 && response !== 1) {
-      throw {
-        origin: "MultiStairHandler.addResponse",
-        context: "when adding a trial response",
-        error: `the response must be either 0 or 1, got: ${JSON.stringify(response)}`,
-      };
-    }
-
-    this._psychoJS.experiment.addData(this._name + ".response", response);
-
-    if (!this._finished) {
-      // update the current staircase, but do not add the response again:
-      this._currentStaircase.addResponse(response, value, false);
-
-      // move onto the next trial:
-      this._nextTrial();
-    }
-  }
-
-  /**
-   * Validate the conditions.
-   *
-   * @protected
-   */
-  _validateConditions() {
-    try {
-      // conditions must be a non empty array:
-      if (!Array.isArray(this._conditions) || this._conditions.length === 0) {
-        throw "conditions should be a non empty array of objects";
-      }
-
-      for (const condition of this._conditions) {
-        // each condition must be an object:
-        if (typeof condition !== "object") {
-          throw "one of the conditions is not an object";
-        }
-
-        // each condition must include certain fields, such as startVal and label:
-        if (!("startVal" in condition)) {
-          throw "each condition should include a startVal field";
-        }
-        if (!("label" in condition)) {
-          throw "each condition should include a label field";
-        }
-
-        // for QUEST, we also need startValSd:
-        if (
-          this._stairType === MultiStairHandler.StaircaseType.QUEST &&
-          !("startValSd" in condition)
-        ) {
-          throw "QUEST conditions must include a startValSd field";
-        }
-      }
-    } catch (error) {
-      throw {
-        origin: "MultiStairHandler._validateConditions",
-        context: "when validating the conditions",
-        error,
-      };
-    }
-  }
-
-  /**
-   * Setup the staircases, according to the conditions.
-   *
-   * @protected
-   */
-  _prepareStaircases() {
-    try {
-      this._validateConditions();
-
-      this._staircases = [];
-
-      for (const condition of this._conditions) {
-        let handler;
-
-        // QUEST handler:
-        if (this._stairType === MultiStairHandler.StaircaseType.QUEST) {
-          const args = Object.assign({}, condition);
-          args.psychoJS = this._psychoJS;
-          args.varName = this._varName;
-          // label becomes name:
-          args.name = condition.label;
-          args.autoLog = this._autoLog;
-          if (typeof condition.nTrials === "undefined") {
-            args.nTrials = this._nTrials;
-          }
-
-          // inform the StairHandler that it is instantiated from a MultiStairHandler
-          // (and so there is no need to update the trial list there since it is updated here)
-          args.fromMultiStair = true;
-
-          // TODO extraArgs
-
-          handler = new QuestHandler(args);
-        }
-
-        // simple StairCase handler:
-        else if (this._stairType === MultiStairHandler.StaircaseType.SIMPLE) {
-          const args = Object.assign({}, condition);
-          args.psychoJS = this._psychoJS;
-          args.varName = this._varName;
-          // label becomes name:
-          args.name = condition.label;
-          args.autoLog = this._autoLog;
-          if (typeof condition.nTrials === "undefined") {
-            args.nTrials = this._nTrials;
-          }
-
-          // inform the StairHandler that it is instantiated from a MultiStairHandler
-          // (and so there is no need to update the trial list there since it is updated here)
-          args.fromMultiStair = true;
-
-          // gather all args above and beyond those expected by the StairHandler constructor
-          // in a separate "extraArgs" argument:
-          const extraArgs = {};
-          const stairHandlerConstructorArgs = [
-            "label",
-            "psychoJS",
-            "varName",
-            "startVal",
-            "minVal",
-            "maxVal",
-            "nTrials",
-            "nReversals",
-            "nUp",
-            "nDown",
-            "applyInitialRule",
-            "stepSizes",
-            "stepType",
-            "name",
-            "autolog",
-            "fromMultiStair",
-            "extraArgs",
-          ];
-          for (const key in condition) {
-            if (stairHandlerConstructorArgs.indexOf(key) === -1) {
-              extraArgs[key] = condition[key];
-            }
-          }
-          args["extraArgs"] = extraArgs;
-
-          handler = new StairHandler(args);
-        }
-
-        this._staircases.push(handler);
-      }
-
-      this._currentPass = [];
-      this._currentStaircase = null;
-    } catch (error) {
-      throw {
-        origin: "MultiStairHandler._prepareStaircases",
-        context: "when preparing the staircases",
-        error,
-      };
-    }
   }
 
   /**
@@ -409,10 +240,180 @@ export class MultiStairHandler extends TrialHandler {
       }
     } catch (error) {
       throw {
-        origin: "MultiStairHandler._nextTrial",
         context: "when moving onto the next trial",
         error,
+        origin: "MultiStairHandler._nextTrial",
       };
+    }
+  }
+
+  /**
+   * Setup the staircases, according to the conditions.
+   *
+   * @protected
+   */
+  _prepareStaircases() {
+    try {
+      this._validateConditions();
+
+      this._staircases = [];
+
+      for (const condition of this._conditions) {
+        let handler;
+
+        // QUEST handler:
+        if (this._stairType === MultiStairHandler.StaircaseType.QUEST) {
+          const args = Object.assign({}, condition);
+          args.psychoJS = this._psychoJS;
+          args.varName = this._varName;
+          // label becomes name:
+          args.name = condition.label;
+          args.autoLog = this._autoLog;
+          if (typeof condition.nTrials === "undefined") {
+            args.nTrials = this._nTrials;
+          }
+
+          // inform the StairHandler that it is instantiated from a MultiStairHandler
+          // (and so there is no need to update the trial list there since it is updated here)
+          args.fromMultiStair = true;
+
+          // TODO extraArgs
+
+          handler = new QuestHandler(args);
+        }
+
+        // simple StairCase handler:
+        else if (this._stairType === MultiStairHandler.StaircaseType.SIMPLE) {
+          const args = Object.assign({}, condition);
+          args.psychoJS = this._psychoJS;
+          args.varName = this._varName;
+          // label becomes name:
+          args.name = condition.label;
+          args.autoLog = this._autoLog;
+          if (typeof condition.nTrials === "undefined") {
+            args.nTrials = this._nTrials;
+          }
+
+          // inform the StairHandler that it is instantiated from a MultiStairHandler
+          // (and so there is no need to update the trial list there since it is updated here)
+          args.fromMultiStair = true;
+
+          // gather all args above and beyond those expected by the StairHandler constructor
+          // in a separate "extraArgs" argument:
+          const extraArgs = {};
+          const stairHandlerConstructorArgs = [
+            "label",
+            "psychoJS",
+            "varName",
+            "startVal",
+            "minVal",
+            "maxVal",
+            "nTrials",
+            "nReversals",
+            "nUp",
+            "nDown",
+            "applyInitialRule",
+            "stepSizes",
+            "stepType",
+            "name",
+            "autolog",
+            "fromMultiStair",
+            "extraArgs",
+          ];
+          for (const key in condition) {
+            if (stairHandlerConstructorArgs.indexOf(key) === -1) {
+              extraArgs[key] = condition[key];
+            }
+          }
+          args["extraArgs"] = extraArgs;
+
+          handler = new StairHandler(args);
+        }
+
+        this._staircases.push(handler);
+      }
+
+      this._currentPass = [];
+      this._currentStaircase = null;
+    } catch (error) {
+      throw {
+        context: "when preparing the staircases",
+        error,
+        origin: "MultiStairHandler._prepareStaircases",
+      };
+    }
+  }
+
+  /**
+   * Validate the conditions.
+   *
+   * @protected
+   */
+  _validateConditions() {
+    try {
+      // conditions must be a non empty array:
+      if (!Array.isArray(this._conditions) || this._conditions.length === 0) {
+        throw "conditions should be a non empty array of objects";
+      }
+
+      for (const condition of this._conditions) {
+        // each condition must be an object:
+        if (typeof condition !== "object") {
+          throw "one of the conditions is not an object";
+        }
+
+        // each condition must include certain fields, such as startVal and label:
+        if (!("startVal" in condition)) {
+          throw "each condition should include a startVal field";
+        }
+        if (!("label" in condition)) {
+          throw "each condition should include a label field";
+        }
+
+        // for QUEST, we also need startValSd:
+        if (
+          this._stairType === MultiStairHandler.StaircaseType.QUEST &&
+          !("startValSd" in condition)
+        ) {
+          throw "QUEST conditions must include a startValSd field";
+        }
+      }
+    } catch (error) {
+      throw {
+        context: "when validating the conditions",
+        error,
+        origin: "MultiStairHandler._validateConditions",
+      };
+    }
+  }
+
+  /**
+   * Add a response to the current staircase.
+   *
+   * @param{number} response - the response to the trial, must be either 0 (incorrect or
+   * non-detected) or 1 (correct or detected)
+   * @param{number | undefined} [value] - optional intensity / contrast / threshold
+   */
+  addResponse(response, value) {
+    this._psychoJS.logger.debug(`response= ${response}`);
+
+    // check that response is either 0 or 1:
+    if (response !== 0 && response !== 1) {
+      throw {
+        context: "when adding a trial response",
+        error: `the response must be either 0 or 1, got: ${JSON.stringify(response)}`,
+        origin: "MultiStairHandler.addResponse",
+      };
+    }
+
+    this._psychoJS.experiment.addData(this._name + ".response", response);
+
+    if (!this._finished) {
+      // update the current staircase, but do not add the response again:
+      this._currentStaircase.addResponse(response, value, false);
+
+      // move onto the next trial:
+      this._nextTrial();
     }
   }
 }
@@ -425,14 +426,14 @@ export class MultiStairHandler extends TrialHandler {
  */
 MultiStairHandler.StaircaseType = {
   /**
-   * Simple staircase handler.
-   */
-  SIMPLE: Symbol.for("SIMPLE"),
-
-  /**
    * QUEST handler.
    */
   QUEST: Symbol.for("QUEST"),
+
+  /**
+   * Simple staircase handler.
+   */
+  SIMPLE: Symbol.for("SIMPLE"),
 };
 
 /**
@@ -443,12 +444,12 @@ MultiStairHandler.StaircaseType = {
  */
 MultiStairHandler.StaircaseStatus = {
   /**
-   * The staircase is currently running.
-   */
-  RUNNING: Symbol.for("RUNNING"),
-
-  /**
    * The staircase is now finished.
    */
   FINISHED: Symbol.for("FINISHED"),
+
+  /**
+   * The staircase is currently running.
+   */
+  RUNNING: Symbol.for("RUNNING"),
 };

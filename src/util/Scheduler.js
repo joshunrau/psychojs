@@ -56,6 +56,68 @@ export class Scheduler {
   }
 
   /**
+   * Run the next scheduled tasks, in sequence, until a rendering of the scene is requested.
+   *
+   * @name Scheduler#_runNextTasks
+   * @private
+   * @return {Scheduler#Event} the state of the scheduler after the last task ran
+   */
+  async _runNextTasks() {
+    this._status = Scheduler.Status.RUNNING;
+
+    let state = Scheduler.Event.NEXT;
+    while (state === Scheduler.Event.NEXT) {
+      // check if we need to quit:
+      if (this._stopAtNextTask) {
+        return Scheduler.Event.QUIT;
+      }
+
+      // if there is no current task, we look for the next one in the list or quit if there is none:
+      if (typeof this._currentTask == "undefined") {
+        // a task is available in the taskList:
+        if (this._taskList.length > 0) {
+          this._currentTask = this._taskList.shift();
+          this._currentArgs = this._argsList.shift();
+        }
+        // the taskList is empty: we quit
+        else {
+          this._currentTask = undefined;
+          this._currentArgs = undefined;
+          return Scheduler.Event.QUIT;
+        }
+      } else {
+        // we are repeating a task
+      }
+
+      // if the current task is a function, we run it:
+      if (this._currentTask instanceof Function) {
+        state = await this._currentTask(...this._currentArgs);
+      }
+      // otherwise, we assume that the current task is a scheduler and we run its tasks until a rendering
+      // of the scene is required.
+      // note: "if (this._currentTask instanceof Scheduler)" does not work because of CORS...
+      else {
+        state = await this._currentTask._runNextTasks();
+        if (state === Scheduler.Event.QUIT) {
+          // if the experiment has not ended, we move onto the next task:
+          if (!this._psychoJS.experiment.experimentEnded) {
+            state = Scheduler.Event.NEXT;
+          }
+        }
+      }
+
+      // if the current task's return status is FLIP_REPEAT, we will re-run it, otherwise
+      // we move onto the next task:
+      if (state !== Scheduler.Event.FLIP_REPEAT) {
+        this._currentTask = undefined;
+        this._currentArgs = undefined;
+      }
+    }
+
+    return state;
+  }
+
+  /**
    * Task to be run by the scheduler.
    *
    * @callback Scheduler~Task
@@ -161,68 +223,6 @@ export class Scheduler {
     this._stopAtNextTask = true;
     this._stopAtNextUpdate = true;
   }
-
-  /**
-   * Run the next scheduled tasks, in sequence, until a rendering of the scene is requested.
-   *
-   * @name Scheduler#_runNextTasks
-   * @private
-   * @return {Scheduler#Event} the state of the scheduler after the last task ran
-   */
-  async _runNextTasks() {
-    this._status = Scheduler.Status.RUNNING;
-
-    let state = Scheduler.Event.NEXT;
-    while (state === Scheduler.Event.NEXT) {
-      // check if we need to quit:
-      if (this._stopAtNextTask) {
-        return Scheduler.Event.QUIT;
-      }
-
-      // if there is no current task, we look for the next one in the list or quit if there is none:
-      if (typeof this._currentTask == "undefined") {
-        // a task is available in the taskList:
-        if (this._taskList.length > 0) {
-          this._currentTask = this._taskList.shift();
-          this._currentArgs = this._argsList.shift();
-        }
-        // the taskList is empty: we quit
-        else {
-          this._currentTask = undefined;
-          this._currentArgs = undefined;
-          return Scheduler.Event.QUIT;
-        }
-      } else {
-        // we are repeating a task
-      }
-
-      // if the current task is a function, we run it:
-      if (this._currentTask instanceof Function) {
-        state = await this._currentTask(...this._currentArgs);
-      }
-      // otherwise, we assume that the current task is a scheduler and we run its tasks until a rendering
-      // of the scene is required.
-      // note: "if (this._currentTask instanceof Scheduler)" does not work because of CORS...
-      else {
-        state = await this._currentTask._runNextTasks();
-        if (state === Scheduler.Event.QUIT) {
-          // if the experiment has not ended, we move onto the next task:
-          if (!this._psychoJS.experiment.experimentEnded) {
-            state = Scheduler.Event.NEXT;
-          }
-        }
-      }
-
-      // if the current task's return status is FLIP_REPEAT, we will re-run it, otherwise
-      // we move onto the next task:
-      if (state !== Scheduler.Event.FLIP_REPEAT) {
-        this._currentTask = undefined;
-        this._currentArgs = undefined;
-      }
-    }
-
-    return state;
-  }
 }
 
 /**
@@ -233,9 +233,9 @@ export class Scheduler {
  */
 Scheduler.Event = {
   /**
-   * Move onto the next task *without* rendering the scene first.
+   * Render the scene and move onto the next task.
    */
-  NEXT: Symbol.for("NEXT"),
+  FLIP_NEXT: Symbol.for("FLIP_NEXT"),
 
   /**
    * Render the scene and repeat the task.
@@ -243,9 +243,9 @@ Scheduler.Event = {
   FLIP_REPEAT: Symbol.for("FLIP_REPEAT"),
 
   /**
-   * Render the scene and move onto the next task.
+   * Move onto the next task *without* rendering the scene first.
    */
-  FLIP_NEXT: Symbol.for("FLIP_NEXT"),
+  NEXT: Symbol.for("NEXT"),
 
   /**
    * Quit the scheduler.

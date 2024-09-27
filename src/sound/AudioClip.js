@@ -26,7 +26,7 @@ export class AudioClip extends PsychObject {
    * @param {Blob} options.data - the audio data, in the given format, at the given sampling rate
    * @param {boolean} [options.autoLog= false] - whether or not to log
    */
-  constructor({ psychoJS, name, sampleRateHz, format, data, autoLog } = {}) {
+  constructor({ autoLog, data, format, name, psychoJS, sampleRateHz } = {}) {
     super(psychoJS);
 
     this._addAttribute("name", name, "audioclip");
@@ -50,227 +50,72 @@ export class AudioClip extends PsychObject {
   }
 
   /**
-   * Set the volume of the playback.
+   * Convert an array buffer to a base64 string.
    *
-   * @param {number} volume - the volume of the playback (must be between 0.0 and 1.0)
-   */
-  setVolume(volume) {
-    this._volume = volume;
-  }
-
-  /**
-   * Start playing the audio clip.
-   *
-   * @public
-   */
-  async startPlayback() {
-    this._psychoJS.logger.debug("request to play the audio clip");
-
-    // wait for the decoding to complete:
-    await this._decodeAudio();
-
-    // note: we need to prepare the audio graph anew each time since, for instance, an
-    // AudioBufferSourceNode can only be played once
-    // ref: https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode
-
-    // create a source node from the in-memory audio data in _audioBuffer:
-    this._source = this._audioContext.createBufferSource();
-    this._source.buffer = this._audioBuffer;
-
-    // create a gain node, so we can control the volume:
-    this._gainNode = this._audioContext.createGain();
-
-    // connect the nodes:
-    this._source.connect(this._gainNode);
-    this._gainNode.connect(this._audioContext.destination);
-
-    // set the volume:
-    this._gainNode.gain.value = this._volume;
-
-    // start the playback:
-    this._source.start();
-  }
-
-  /**
-   * Stop playing the audio clip.
-   *
-   * @param {number} [fadeDuration = 17] - how long the fading out should last, in ms
-   */
-  async stopPlayback(fadeDuration = 17) {
-    // TODO deal with fade duration
-
-    // stop the playback:
-    this._source.stop();
-  }
-
-  /**
-   * Get the duration of the audio clip, in seconds.
-   *
-   * @returns {Promise<number>} the duration of the audio clip
-   */
-  async getDuration() {
-    // wait for the decoding to complete:
-    await this._decodeAudio();
-
-    return this._audioBuffer.duration;
-  }
-
-  /**
-   * Upload the audio clip to the pavlovia server.
-   *
-   * @public
-   */
-  upload() {
-    this._psychoJS.logger.debug(
-      "request to upload the audio clip to pavlovia.org",
-    );
-
-    // add a format-dependent audio extension to the name:
-    const filename = this._name + util.extensionFromMimeType(this._format);
-
-    // if the audio recording cannot be uploaded, e.g. the experiment is running locally, or
-    // if it is piloting mode, then we offer the audio clip as a file for download:
-    if (
-      this._psychoJS.getEnvironment() !==
-        ExperimentHandler.Environment.SERVER ||
-      this._psychoJS.config.experiment.status !== "RUNNING" ||
-      this._psychoJS._serverMsg.has("__pilotToken")
-    ) {
-      return this.download(filename);
-    }
-
-    // upload the data:
-    return this._psychoJS.serverManager.uploadAudioVideo({
-      mediaBlob: this._data,
-      tag: filename,
-    });
-  }
-
-  /**
-   * Offer the audio clip to the participant as a sound file to download.
-   */
-  download(filename = "audio.webm") {
-    const anchor = document.createElement("a");
-    anchor.href = window.URL.createObjectURL(this._data);
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-  }
-
-  /**
-   * Transcribe the audio clip.
-   *
-   * @param {Object} options
-   * @param {Symbol} options.engine - the speech-to-text engine
-   * @param {String} options.languageCode - the BCP-47 language code for the recognition,
-   * 	e.g. 'en-GB'
-   * @return {Promise} a promise resolving to the transcript and associated
-   * 	transcription confidence
-   */
-  async transcribe({ engine, languageCode } = {}) {
-    const response = {
-      origin: "AudioClip.transcribe",
-      context: `when transcribing audio clip: ${this._name}`,
-    };
-
-    this._psychoJS.logger.debug(response);
-
-    // get the secret key from the experiment configuration:
-    const fullEngineName = `sound.AudioClip.Engine.${Symbol.keyFor(engine)}`;
-    let transcriptionKey;
-    for (const key of this._psychoJS.config.experiment.keys) {
-      if (key.name === fullEngineName) {
-        transcriptionKey = key.value;
-      }
-    }
-    if (typeof transcriptionKey === "undefined") {
-      throw {
-        ...response,
-        error: `missing key for engine: ${fullEngineName}`,
-      };
-    }
-
-    // wait for the decoding to complete:
-    await this._decodeAudio();
-
-    // dispatch on engine:
-    if (engine === AudioClip.Engine.GOOGLE) {
-      return this._GoogleTranscribe(transcriptionKey, languageCode);
-    } else {
-      throw {
-        ...response,
-        error: `unsupported speech-to-text engine: ${engine}`,
-      };
-    }
-  }
-
-  /**
-   * Transcribe the audio clip using the Google Cloud Speech-To-Text Engine.
-   *
-   * ref: https://cloud.google.com/speech-to-text/docs/reference/rest/v1/speech/recognize
+   * @note this is heavily inspired by the following post by @Grantlyk:
+   * https://gist.github.com/jonleighton/958841#gistcomment-1953137
+   * It is necessary since the following approach only works for small buffers:
+   * const dataAsString = String.fromCharCode.apply(null, new Uint8Array(buffer));
+   * base64Data = window.btoa(dataAsString);
    *
    * @protected
-   * @param {String} transcriptionKey - the secret key to the Google service
-   * @param {String} languageCode - the BCP-47 language code for the recognition, e.g. 'en-GB'
-   * @return {Promise} a promise resolving to the transcript and associated
-   * 	transcription confidence
+   * @param arrayBuffer - the input buffer
+   * @return {string} the base64 encoded input buffer
    */
-  _GoogleTranscribe(transcriptionKey, languageCode) {
-    return new Promise(async (resolve, reject) => {
-      // convert the Float32 PCM audio data to UInt16:
-      const buffer = new ArrayBuffer(this._audioData.length * 2);
-      const uint16View = new Uint16Array(buffer);
-      for (let t = 0; t < this._audioData.length; ++t) {
-        uint16View[t] =
-          this._audioData[t] < 0
-            ? this._audioData[t] * 0x8000
-            : this._audioData[t] * 0x7fff;
-      }
+  _base64ArrayBuffer(arrayBuffer) {
+    let base64 = "";
+    const encodings =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-      // encode it to base64:
-      const base64Data = this._base64ArrayBuffer(new Uint8Array(buffer));
+    const bytes = new Uint8Array(arrayBuffer);
+    const byteLength = bytes.byteLength;
+    const byteRemainder = byteLength % 3;
+    const mainLength = byteLength - byteRemainder;
 
-      // query the Google speech-to-text service:
-      const body = {
-        config: {
-          encoding: "LINEAR16",
-          sampleRateHertz: this._sampleRateHz,
-          languageCode,
-        },
-        audio: {
-          content: base64Data,
-        },
-      };
+    let a;
+    let b;
+    let c;
+    let d;
+    let chunk;
 
-      const url = `https://speech.googleapis.com/v1/speech:recognize?key=${transcriptionKey}`;
+    // Main loop deals with bytes in chunks of 3
+    for (let i = 0; i < mainLength; i += 3) {
+      // Combine the three bytes into a single integer
+      chunk = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
+      // Use bitmasks to extract 6-bit segments from the triplet
+      a = (chunk & 16515072) >> 18; // 16515072 = (2^6 - 1) << 18
+      b = (chunk & 258048) >> 12; // 258048   = (2^6 - 1) << 12
+      c = (chunk & 4032) >> 6; // 4032     = (2^6 - 1) << 6
+      d = chunk & 63; // 63       = 2^6 - 1
 
-      // convert the response to json:
-      const decodedResponse = await response.json();
-      this._psychoJS.logger.debug(
-        "speech.googleapis.com response:",
-        JSON.stringify(decodedResponse),
-      );
+      // Convert the raw binary segments to the appropriate ASCII encoding
+      base64 += encodings[a] + encodings[b] + encodings[c] + encodings[d];
+    }
 
-      // TODO deal with more than one results and/or alternatives
-      if ("results" in decodedResponse && decodedResponse.results.length > 0) {
-        resolve(decodedResponse.results[0].alternatives[0]);
-      } else {
-        // no transcription available:
-        resolve({
-          transcript: "",
-          confidence: -1,
-        });
-      }
-    });
+    // Deal with the remaining bytes and padding
+    if (byteRemainder === 1) {
+      chunk = bytes[mainLength];
+
+      a = (chunk & 252) >> 2; // 252 = (2^6 - 1) << 2
+
+      // Set the 4 least significant bits to zero
+      b = (chunk & 3) << 4; // 3   = 2^2 - 1
+
+      base64 += `${encodings[a]}${encodings[b]}==`;
+    } else if (byteRemainder === 2) {
+      chunk = (bytes[mainLength] << 8) | bytes[mainLength + 1];
+
+      a = (chunk & 64512) >> 10; // 64512 = (2^6 - 1) << 10
+      b = (chunk & 1008) >> 4; // 1008  = (2^6 - 1) << 4
+
+      // Set the 2 least significant bits to zero
+      c = (chunk & 15) << 2; // 15    = 2^4 - 1
+
+      base64 += `${encodings[a]}${encodings[b]}${encodings[c]}=`;
+    }
+
+    return base64;
   }
 
   /**
@@ -345,72 +190,227 @@ export class AudioClip extends PsychObject {
   }
 
   /**
-   * Convert an array buffer to a base64 string.
+   * Transcribe the audio clip using the Google Cloud Speech-To-Text Engine.
    *
-   * @note this is heavily inspired by the following post by @Grantlyk:
-   * https://gist.github.com/jonleighton/958841#gistcomment-1953137
-   * It is necessary since the following approach only works for small buffers:
-   * const dataAsString = String.fromCharCode.apply(null, new Uint8Array(buffer));
-   * base64Data = window.btoa(dataAsString);
+   * ref: https://cloud.google.com/speech-to-text/docs/reference/rest/v1/speech/recognize
    *
    * @protected
-   * @param arrayBuffer - the input buffer
-   * @return {string} the base64 encoded input buffer
+   * @param {String} transcriptionKey - the secret key to the Google service
+   * @param {String} languageCode - the BCP-47 language code for the recognition, e.g. 'en-GB'
+   * @return {Promise} a promise resolving to the transcript and associated
+   * 	transcription confidence
    */
-  _base64ArrayBuffer(arrayBuffer) {
-    let base64 = "";
-    const encodings =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  _GoogleTranscribe(transcriptionKey, languageCode) {
+    return new Promise(async (resolve, reject) => {
+      // convert the Float32 PCM audio data to UInt16:
+      const buffer = new ArrayBuffer(this._audioData.length * 2);
+      const uint16View = new Uint16Array(buffer);
+      for (let t = 0; t < this._audioData.length; ++t) {
+        uint16View[t] =
+          this._audioData[t] < 0
+            ? this._audioData[t] * 0x8000
+            : this._audioData[t] * 0x7fff;
+      }
 
-    const bytes = new Uint8Array(arrayBuffer);
-    const byteLength = bytes.byteLength;
-    const byteRemainder = byteLength % 3;
-    const mainLength = byteLength - byteRemainder;
+      // encode it to base64:
+      const base64Data = this._base64ArrayBuffer(new Uint8Array(buffer));
 
-    let a;
-    let b;
-    let c;
-    let d;
-    let chunk;
+      // query the Google speech-to-text service:
+      const body = {
+        audio: {
+          content: base64Data,
+        },
+        config: {
+          encoding: "LINEAR16",
+          languageCode,
+          sampleRateHertz: this._sampleRateHz,
+        },
+      };
 
-    // Main loop deals with bytes in chunks of 3
-    for (let i = 0; i < mainLength; i += 3) {
-      // Combine the three bytes into a single integer
-      chunk = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+      const url = `https://speech.googleapis.com/v1/speech:recognize?key=${transcriptionKey}`;
 
-      // Use bitmasks to extract 6-bit segments from the triplet
-      a = (chunk & 16515072) >> 18; // 16515072 = (2^6 - 1) << 18
-      b = (chunk & 258048) >> 12; // 258048   = (2^6 - 1) << 12
-      c = (chunk & 4032) >> 6; // 4032     = (2^6 - 1) << 6
-      d = chunk & 63; // 63       = 2^6 - 1
+      const response = await fetch(url, {
+        body: JSON.stringify(body),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
 
-      // Convert the raw binary segments to the appropriate ASCII encoding
-      base64 += encodings[a] + encodings[b] + encodings[c] + encodings[d];
+      // convert the response to json:
+      const decodedResponse = await response.json();
+      this._psychoJS.logger.debug(
+        "speech.googleapis.com response:",
+        JSON.stringify(decodedResponse),
+      );
+
+      // TODO deal with more than one results and/or alternatives
+      if ("results" in decodedResponse && decodedResponse.results.length > 0) {
+        resolve(decodedResponse.results[0].alternatives[0]);
+      } else {
+        // no transcription available:
+        resolve({
+          confidence: -1,
+          transcript: "",
+        });
+      }
+    });
+  }
+
+  /**
+   * Offer the audio clip to the participant as a sound file to download.
+   */
+  download(filename = "audio.webm") {
+    const anchor = document.createElement("a");
+    anchor.href = window.URL.createObjectURL(this._data);
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+  }
+
+  /**
+   * Get the duration of the audio clip, in seconds.
+   *
+   * @returns {Promise<number>} the duration of the audio clip
+   */
+  async getDuration() {
+    // wait for the decoding to complete:
+    await this._decodeAudio();
+
+    return this._audioBuffer.duration;
+  }
+
+  /**
+   * Set the volume of the playback.
+   *
+   * @param {number} volume - the volume of the playback (must be between 0.0 and 1.0)
+   */
+  setVolume(volume) {
+    this._volume = volume;
+  }
+
+  /**
+   * Start playing the audio clip.
+   *
+   * @public
+   */
+  async startPlayback() {
+    this._psychoJS.logger.debug("request to play the audio clip");
+
+    // wait for the decoding to complete:
+    await this._decodeAudio();
+
+    // note: we need to prepare the audio graph anew each time since, for instance, an
+    // AudioBufferSourceNode can only be played once
+    // ref: https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode
+
+    // create a source node from the in-memory audio data in _audioBuffer:
+    this._source = this._audioContext.createBufferSource();
+    this._source.buffer = this._audioBuffer;
+
+    // create a gain node, so we can control the volume:
+    this._gainNode = this._audioContext.createGain();
+
+    // connect the nodes:
+    this._source.connect(this._gainNode);
+    this._gainNode.connect(this._audioContext.destination);
+
+    // set the volume:
+    this._gainNode.gain.value = this._volume;
+
+    // start the playback:
+    this._source.start();
+  }
+
+  /**
+   * Stop playing the audio clip.
+   *
+   * @param {number} [fadeDuration = 17] - how long the fading out should last, in ms
+   */
+  async stopPlayback(fadeDuration = 17) {
+    // TODO deal with fade duration
+
+    // stop the playback:
+    this._source.stop();
+  }
+
+  /**
+   * Transcribe the audio clip.
+   *
+   * @param {Object} options
+   * @param {Symbol} options.engine - the speech-to-text engine
+   * @param {String} options.languageCode - the BCP-47 language code for the recognition,
+   * 	e.g. 'en-GB'
+   * @return {Promise} a promise resolving to the transcript and associated
+   * 	transcription confidence
+   */
+  async transcribe({ engine, languageCode } = {}) {
+    const response = {
+      context: `when transcribing audio clip: ${this._name}`,
+      origin: "AudioClip.transcribe",
+    };
+
+    this._psychoJS.logger.debug(response);
+
+    // get the secret key from the experiment configuration:
+    const fullEngineName = `sound.AudioClip.Engine.${Symbol.keyFor(engine)}`;
+    let transcriptionKey;
+    for (const key of this._psychoJS.config.experiment.keys) {
+      if (key.name === fullEngineName) {
+        transcriptionKey = key.value;
+      }
+    }
+    if (typeof transcriptionKey === "undefined") {
+      throw {
+        ...response,
+        error: `missing key for engine: ${fullEngineName}`,
+      };
     }
 
-    // Deal with the remaining bytes and padding
-    if (byteRemainder === 1) {
-      chunk = bytes[mainLength];
+    // wait for the decoding to complete:
+    await this._decodeAudio();
 
-      a = (chunk & 252) >> 2; // 252 = (2^6 - 1) << 2
+    // dispatch on engine:
+    if (engine === AudioClip.Engine.GOOGLE) {
+      return this._GoogleTranscribe(transcriptionKey, languageCode);
+    } else {
+      throw {
+        ...response,
+        error: `unsupported speech-to-text engine: ${engine}`,
+      };
+    }
+  }
 
-      // Set the 4 least significant bits to zero
-      b = (chunk & 3) << 4; // 3   = 2^2 - 1
+  /**
+   * Upload the audio clip to the pavlovia server.
+   *
+   * @public
+   */
+  upload() {
+    this._psychoJS.logger.debug(
+      "request to upload the audio clip to pavlovia.org",
+    );
 
-      base64 += `${encodings[a]}${encodings[b]}==`;
-    } else if (byteRemainder === 2) {
-      chunk = (bytes[mainLength] << 8) | bytes[mainLength + 1];
+    // add a format-dependent audio extension to the name:
+    const filename = this._name + util.extensionFromMimeType(this._format);
 
-      a = (chunk & 64512) >> 10; // 64512 = (2^6 - 1) << 10
-      b = (chunk & 1008) >> 4; // 1008  = (2^6 - 1) << 4
-
-      // Set the 2 least significant bits to zero
-      c = (chunk & 15) << 2; // 15    = 2^4 - 1
-
-      base64 += `${encodings[a]}${encodings[b]}${encodings[c]}=`;
+    // if the audio recording cannot be uploaded, e.g. the experiment is running locally, or
+    // if it is piloting mode, then we offer the audio clip as a file for download:
+    if (
+      this._psychoJS.getEnvironment() !==
+        ExperimentHandler.Environment.SERVER ||
+      this._psychoJS.config.experiment.status !== "RUNNING" ||
+      this._psychoJS._serverMsg.has("__pilotToken")
+    ) {
+      return this.download(filename);
     }
 
-    return base64;
+    // upload the data:
+    return this._psychoJS.serverManager.uploadAudioVideo({
+      mediaBlob: this._data,
+      tag: filename,
+    });
   }
 }
 

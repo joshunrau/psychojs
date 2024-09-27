@@ -21,6 +21,19 @@ export let ColorMixin = (superclass) =>
     }
 
     /**
+     * Get a new contrasted Color.
+     *
+     * @name module:util.ColorMixin#getContrastedColor
+     * @function
+     * @param {string|number|Array.<number>} color - the color
+     * @param {number} contrast - the contrast (must be between 0 and 1)
+     */
+    getContrastedColor(color, contrast) {
+      const rgb = color.rgb.map((c) => (c * 2.0 - 1.0) * contrast);
+      return new Color(rgb, Color.COLOR_SPACE.RGB);
+    }
+
+    /**
      * Setter for Color attribute.
      *
      * @name module:util.ColorMixin#setColor
@@ -48,18 +61,5 @@ export let ColorMixin = (superclass) =>
 
       this._needUpdate = true;
       this._needPixiUpdate = true;
-    }
-
-    /**
-     * Get a new contrasted Color.
-     *
-     * @name module:util.ColorMixin#getContrastedColor
-     * @function
-     * @param {string|number|Array.<number>} color - the color
-     * @param {number} contrast - the contrast (must be between 0 and 1)
-     */
-    getContrastedColor(color, contrast) {
-      const rgb = color.rgb.map((c) => (c * 2.0 - 1.0) * contrast);
-      return new Color(rgb, Color.COLOR_SPACE.RGB);
     }
   };

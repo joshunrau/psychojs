@@ -6,13 +6,14 @@
  * @license Distributed under the terms of the MIT License
  */
 
-import * as PIXI from "pixi.js-legacy";
 import { AdjustmentFilter } from "@pixi/filter-adjustment";
+import * as PIXI from "pixi.js-legacy";
+
 import { MonotonicClock } from "../util/Clock.js";
 import { Color } from "../util/Color.js";
 import { PsychObject } from "../util/PsychObject.js";
-import { Logger } from "./Logger.js";
 import { hasTouchScreen } from "../util/Util.js";
+import { Logger } from "./Logger.js";
 
 /**
  * Window displays the various stimuli of the experiment.
@@ -21,33 +22,6 @@ import { hasTouchScreen } from "../util/Util.js";
  * @extends PsychObject
  */
 export class Window extends PsychObject {
-  /**
-   * Check whether PsychoJS/Pixi.js is actually using WebGL in the participant's browser, i.e.
-   * hardware acceleration, rather than software emulation or Pixi.js' canvas fallback.
-   *
-   * @return true if WebGL is supported and false if it is not or if it is supported
-   * 	only through software emulation
-   */
-  static checkWebGLSupport() {
-    // Note: in order to detect whether the participant's browser has hardware acceleration turned off
-    // we set FAIL_IF_MAJOR_PERFORMANCE_CAVEAT to true. This ensures that the WebGL context creation that
-    // takes place in PIXI.utils.isWebGLSupported fails if the performance is low, which is typically the case
-    // with software emulation.
-    // See details here: https://registry.khronos.org/webgl/specs/latest/1.0/#5.2
-    PIXI.settings.FAIL_IF_MAJOR_PERFORMANCE_CAVEAT = true;
-    return PIXI.utils.isWebGLSupported();
-  }
-
-  /**
-   * Getter for monitorFramePeriod.
-   *
-   * @name module:core.Window#monitorFramePeriod
-   * @return the estimated monitor frame period
-   */
-  get monitorFramePeriod() {
-    return 1.0 / this.getActualFrameRate();
-  }
-
   /**
    * @param {Object} options
    * @param {module:core.PsychoJS} options.psychoJS - the PsychoJS instance
@@ -62,15 +36,15 @@ export class Window extends PsychObject {
    * @param {boolean} [options.autoLog= true] whether or not to log
    */
   constructor({
-    psychoJS,
-    name,
-    fullscr = false,
+    autoLog = true,
     color = new Color("black"),
-    gamma = 1,
     contrast = 1,
+    fullscr = false,
+    gamma = 1,
+    name,
+    psychoJS,
     units = "pix",
     waitBlanking = false,
-    autoLog = true,
   } = {}) {
     super(psychoJS, name);
 
@@ -79,8 +53,8 @@ export class Window extends PsychObject {
 
     // storing AdjustmentFilter instance to access later;
     this._adjustmentFilter = new AdjustmentFilter({
-      gamma,
       contrast,
+      gamma,
     });
 
     // list of all elements, in the order they are currently drawn:
@@ -136,226 +110,79 @@ export class Window extends PsychObject {
   }
 
   /**
-   * Close the window.
+   * Adjust the size of the renderer and the position of the root container
+   * in response to a change in the browser's size.
    *
-   *  Note: this actually only removes the canvas used to render the experiment stimuli.
+   * @protected
+   * @param {module:core.Window} pjsWindow - the PsychoJS Window
+   * @param event
    */
-  close() {
-    if (!this._renderer) {
-      return;
-    }
+  static _resizePixiRenderer(pjsWindow, event) {
+    pjsWindow._psychoJS.logger.debug(
+      "resizing Window: ",
+      pjsWindow._name,
+      "event:",
+      JSON.stringify(event),
+    );
 
-    this._rootContainer.destroy();
+    // update the size of the PsychoJS Window:
+    pjsWindow._size[0] = window.innerWidth;
+    pjsWindow._size[1] = window.innerHeight;
 
-    if (document.body.contains(this._renderer.view)) {
-      document.body.removeChild(this._renderer.view);
-    }
+    // update the PIXI renderer:
+    pjsWindow._renderer.view.style.width = pjsWindow._size[0] + "px";
+    pjsWindow._renderer.view.style.height = pjsWindow._size[1] + "px";
+    pjsWindow._renderer.view.style.left = "0px";
+    pjsWindow._renderer.view.style.top = "0px";
+    pjsWindow._renderer.resize(pjsWindow._size[0], pjsWindow._size[1]);
 
-    // destroy the renderer and the WebGL context:
-    if (typeof this._renderer.gl !== "undefined") {
-      const extension = this._renderer.gl.getExtension("WEBGL_lose_context");
-      extension.loseContext();
-    }
-
-    this._renderer.destroy();
-
-    window.removeEventListener("resize", this._resizeCallback);
-    window.removeEventListener("orientationchange", this._resizeCallback);
-
-    this._renderer = null;
+    // setup the container such that (0,0) is at the centre of the window
+    // with positive coordinates to the right and top:
+    pjsWindow._rootContainer.position.x = pjsWindow._size[0] / 2.0;
+    pjsWindow._rootContainer.position.y = pjsWindow._size[1] / 2.0;
+    pjsWindow._rootContainer.scale.y = -1;
   }
 
   /**
-   * Estimate the frame rate.
+   * Check whether PsychoJS/Pixi.js is actually using WebGL in the participant's browser, i.e.
+   * hardware acceleration, rather than software emulation or Pixi.js' canvas fallback.
    *
-   * @return {number} rAF based delta time based approximation, 60.0 by default
+   * @return true if WebGL is supported and false if it is not or if it is supported
+   * 	only through software emulation
    */
-  getActualFrameRate() {
-    // gets updated frame by frame
-    const lastDelta = this.psychoJS.scheduler._lastDelta;
-    const fps = lastDelta === 0 ? 60.0 : 1000.0 / lastDelta;
-
-    return fps;
+  static checkWebGLSupport() {
+    // Note: in order to detect whether the participant's browser has hardware acceleration turned off
+    // we set FAIL_IF_MAJOR_PERFORMANCE_CAVEAT to true. This ensures that the WebGL context creation that
+    // takes place in PIXI.utils.isWebGLSupported fails if the performance is low, which is typically the case
+    // with software emulation.
+    // See details here: https://registry.khronos.org/webgl/specs/latest/1.0/#5.2
+    PIXI.settings.FAIL_IF_MAJOR_PERFORMANCE_CAVEAT = true;
+    return PIXI.utils.isWebGLSupported();
   }
 
   /**
-   * Take the browser full screen if possible.
-   */
-  adjustScreenSize() {
-    // (!window.screenTop && !window.screenY) does not work in all browsers on all operating systems (e.g. Chrome on
-    // Windows). As far as I can ascertain, as of 2019.08.01 there still does not seem to be a reliable way to
-    // test whether the window is already fullscreen.
-    // this._windowAlreadyInFullScreen = (!window.screenTop && !window.screenY);
-
-    if (this.fullscr /* && !this._windowAlreadyInFullScreen*/) {
-      this._psychoJS.logger.debug(
-        "Resizing Window: ",
-        this._name,
-        "to full screen.",
-      );
-
-      if (typeof document.documentElement.requestFullscreen === "function") {
-        document.documentElement.requestFullscreen().catch(() => {
-          this.psychoJS.logger.warn("Unable to go fullscreen.");
-        });
-      } else if (
-        typeof document.documentElement.mozRequestFullScreen === "function"
-      ) {
-        document.documentElement.mozRequestFullScreen();
-      } else if (
-        typeof document.documentElement.webkitRequestFullscreen === "function"
-      ) {
-        document.documentElement.webkitRequestFullscreen();
-      } else if (
-        typeof document.documentElement.msRequestFullscreen === "function"
-      ) {
-        document.documentElement.msRequestFullscreen();
-      } else {
-        this.psychoJS.logger.warn("Unable to go fullscreen.");
-      }
-    }
-  }
-
-  /**
-   * Take the browser back from full screen if needed.
-   */
-  closeFullScreen() {
-    if (this.fullscr) {
-      this._psychoJS.logger.debug(
-        "Resizing Window: ",
-        this._name,
-        "back from full screen.",
-      );
-
-      if (typeof document.exitFullscreen === "function") {
-        document.exitFullscreen().catch(() => {
-          this.psychoJS.logger.warn("Unable to close fullscreen.");
-        });
-      } else if (typeof document.mozCancelFullScreen === "function") {
-        document.mozCancelFullScreen();
-      } else if (typeof document.webkitExitFullscreen === "function") {
-        document.webkitExitFullscreen();
-      } else if (typeof document.msExitFullscreen === "function") {
-        document.msExitFullscreen();
-      } else {
-        this.psychoJS.logger.warn("Unable to close fullscreen.");
-      }
-    }
-  }
-
-  /**
-   * Log a message.
+   * Getter for monitorFramePeriod.
    *
-   *  Note: the message will be time-stamped at the next call to requestAnimationFrame.
-   *
-   * @param {Object} options
-   * @param {String} options.msg the message to be logged
-   * @param {module:util.Logger.ServerLevel} [level = module:util.Logger.ServerLevel.EXP] the log level
-   * @param {Object} [obj] the object associated with the message
+   * @name module:core.Window#monitorFramePeriod
+   * @return the estimated monitor frame period
    */
-  logOnFlip({ msg, level = Logger.ServerLevel.EXP, obj } = {}) {
-    this._msgToBeLogged.push({ msg, level, obj });
+  get monitorFramePeriod() {
+    return 1.0 / this.getActualFrameRate();
   }
 
   /**
-   * Callback function for callOnFlip.
-   *
-   * @callback module:core.Window~OnFlipCallback
-   * @param {*} [args] optional arguments
-   */
-  /**
-   * Add a callback function that will run after the next screen flip, i.e. immediately after the next rendering of the
-   * Window.
-   *
-   * This is typically used to reset a timer or clock.
-   *
-   * @param {module:core.Window~OnFlipCallback} flipCallback - callback function.
-   * @param {...*} flipCallbackArgs - arguments for the callback function.
-   */
-  callOnFlip(flipCallback, ...flipCallbackArgs) {
-    this._flipCallbacks.push({
-      function: flipCallback,
-      arguments: flipCallbackArgs,
-    });
-  }
-
-  /**
-   * Add PIXI.DisplayObject to the container displayed on the scene (window)
-   */
-  addPixiObject(pixiObject) {
-    this._stimsContainer.addChild(pixiObject);
-  }
-
-  /**
-   * Remove PIXI.DisplayObject from the container displayed on the scene (window)
-   */
-  removePixiObject(pixiObject) {
-    this._stimsContainer.removeChild(pixiObject);
-  }
-
-  /**
-   * Render the stimuli onto the canvas.
-   */
-  render() {
-    if (!this._renderer) {
-      return;
-    }
-
-    this._frameCount++;
-
-    // render the PIXI container:
-    this._renderer.render(this._rootContainer);
-
-    if (typeof this._renderer.gl !== "undefined") {
-      // this is to make sure that the GPU is done rendering, it may not be necessary
-      // [http://www.html5gamedevs.com/topic/27849-detect-when-view-has-been-rendered/]
-      this._renderer.gl.readPixels(
-        0,
-        0,
-        1,
-        1,
-        this._renderer.gl.RGBA,
-        this._renderer.gl.UNSIGNED_BYTE,
-        new Uint8Array(4),
-      );
-
-      // blocks execution until the rendering is fully done:
-      if (this._waitBlanking) {
-        this._renderer.gl.finish();
-      }
-    }
-
-    // call the callOnFlip functions and remove them:
-    for (let callback of this._flipCallbacks) {
-      callback["function"](...callback["arguments"]);
-    }
-    this._flipCallbacks = [];
-
-    // log:
-    this._writeLogOnFlip();
-
-    // prepare the scene for the next animation frame:
-    this._refresh();
-  }
-
-  /**
-   * Update this window, if need be.
+   * Force an update of all stimuli in this window's drawlist.
    *
    * @protected
    */
-  _updateIfNeeded() {
-    if (this._needUpdate) {
-      if (this._renderer) {
-        this._renderer.backgroundColor = this._color.int;
-        this._backgroundSprite.tint = this._color.int;
-      }
+  _fullRefresh() {
+    this._needUpdate = true;
 
-      // we also change the background color of the body since
-      // the dialog popup may be longer than the window's height:
-      document.body.style.backgroundColor = this._color.hex;
-
-      this._needUpdate = false;
+    for (const stimulus of this._drawList) {
+      stimulus.refresh();
     }
+
+    this._refresh();
   }
 
   /**
@@ -378,21 +205,6 @@ export class Window extends PsychObject {
   }
 
   /**
-   * Force an update of all stimuli in this window's drawlist.
-   *
-   * @protected
-   */
-  _fullRefresh() {
-    this._needUpdate = true;
-
-    for (const stimulus of this._drawList) {
-      stimulus.refresh();
-    }
-
-    this._refresh();
-  }
-
-  /**
    * Setup PIXI.
    *
    * <p>A new renderer is created and a container is added to it. The renderer's touch and mouse events
@@ -412,11 +224,11 @@ export class Window extends PsychObject {
 
     // create a PIXI renderer and add it to the document:
     this._renderer = PIXI.autoDetectRenderer({
-      width: this._size[0],
-      height: this._size[1],
       backgroundColor: this.color.int,
+      height: this._size[1],
       powerPreference: "high-performance",
       resolution: window.devicePixelRatio,
+      width: this._size[0],
     });
     this._renderer.view.style.transform = "translatez(0)";
     this._renderer.view.style.position = "absolute";
@@ -483,37 +295,23 @@ export class Window extends PsychObject {
   }
 
   /**
-   * Adjust the size of the renderer and the position of the root container
-   * in response to a change in the browser's size.
+   * Update this window, if need be.
    *
    * @protected
-   * @param {module:core.Window} pjsWindow - the PsychoJS Window
-   * @param event
    */
-  static _resizePixiRenderer(pjsWindow, event) {
-    pjsWindow._psychoJS.logger.debug(
-      "resizing Window: ",
-      pjsWindow._name,
-      "event:",
-      JSON.stringify(event),
-    );
+  _updateIfNeeded() {
+    if (this._needUpdate) {
+      if (this._renderer) {
+        this._renderer.backgroundColor = this._color.int;
+        this._backgroundSprite.tint = this._color.int;
+      }
 
-    // update the size of the PsychoJS Window:
-    pjsWindow._size[0] = window.innerWidth;
-    pjsWindow._size[1] = window.innerHeight;
+      // we also change the background color of the body since
+      // the dialog popup may be longer than the window's height:
+      document.body.style.backgroundColor = this._color.hex;
 
-    // update the PIXI renderer:
-    pjsWindow._renderer.view.style.width = pjsWindow._size[0] + "px";
-    pjsWindow._renderer.view.style.height = pjsWindow._size[1] + "px";
-    pjsWindow._renderer.view.style.left = "0px";
-    pjsWindow._renderer.view.style.top = "0px";
-    pjsWindow._renderer.resize(pjsWindow._size[0], pjsWindow._size[1]);
-
-    // setup the container such that (0,0) is at the centre of the window
-    // with positive coordinates to the right and top:
-    pjsWindow._rootContainer.position.x = pjsWindow._size[0] / 2.0;
-    pjsWindow._rootContainer.position.y = pjsWindow._size[1] / 2.0;
-    pjsWindow._rootContainer.scale.y = -1;
+      this._needUpdate = false;
+    }
   }
 
   /**
@@ -533,5 +331,208 @@ export class Window extends PsychObject {
     }
 
     this._msgToBeLogged = [];
+  }
+
+  /**
+   * Add PIXI.DisplayObject to the container displayed on the scene (window)
+   */
+  addPixiObject(pixiObject) {
+    this._stimsContainer.addChild(pixiObject);
+  }
+
+  /**
+   * Take the browser full screen if possible.
+   */
+  adjustScreenSize() {
+    // (!window.screenTop && !window.screenY) does not work in all browsers on all operating systems (e.g. Chrome on
+    // Windows). As far as I can ascertain, as of 2019.08.01 there still does not seem to be a reliable way to
+    // test whether the window is already fullscreen.
+    // this._windowAlreadyInFullScreen = (!window.screenTop && !window.screenY);
+
+    if (this.fullscr /* && !this._windowAlreadyInFullScreen*/) {
+      this._psychoJS.logger.debug(
+        "Resizing Window: ",
+        this._name,
+        "to full screen.",
+      );
+
+      if (typeof document.documentElement.requestFullscreen === "function") {
+        document.documentElement.requestFullscreen().catch(() => {
+          this.psychoJS.logger.warn("Unable to go fullscreen.");
+        });
+      } else if (
+        typeof document.documentElement.mozRequestFullScreen === "function"
+      ) {
+        document.documentElement.mozRequestFullScreen();
+      } else if (
+        typeof document.documentElement.webkitRequestFullscreen === "function"
+      ) {
+        document.documentElement.webkitRequestFullscreen();
+      } else if (
+        typeof document.documentElement.msRequestFullscreen === "function"
+      ) {
+        document.documentElement.msRequestFullscreen();
+      } else {
+        this.psychoJS.logger.warn("Unable to go fullscreen.");
+      }
+    }
+  }
+
+  /**
+   * Callback function for callOnFlip.
+   *
+   * @callback module:core.Window~OnFlipCallback
+   * @param {*} [args] optional arguments
+   */
+  /**
+   * Add a callback function that will run after the next screen flip, i.e. immediately after the next rendering of the
+   * Window.
+   *
+   * This is typically used to reset a timer or clock.
+   *
+   * @param {module:core.Window~OnFlipCallback} flipCallback - callback function.
+   * @param {...*} flipCallbackArgs - arguments for the callback function.
+   */
+  callOnFlip(flipCallback, ...flipCallbackArgs) {
+    this._flipCallbacks.push({
+      arguments: flipCallbackArgs,
+      function: flipCallback,
+    });
+  }
+
+  /**
+   * Close the window.
+   *
+   *  Note: this actually only removes the canvas used to render the experiment stimuli.
+   */
+  close() {
+    if (!this._renderer) {
+      return;
+    }
+
+    this._rootContainer.destroy();
+
+    if (document.body.contains(this._renderer.view)) {
+      document.body.removeChild(this._renderer.view);
+    }
+
+    // destroy the renderer and the WebGL context:
+    if (typeof this._renderer.gl !== "undefined") {
+      const extension = this._renderer.gl.getExtension("WEBGL_lose_context");
+      extension.loseContext();
+    }
+
+    this._renderer.destroy();
+
+    window.removeEventListener("resize", this._resizeCallback);
+    window.removeEventListener("orientationchange", this._resizeCallback);
+
+    this._renderer = null;
+  }
+
+  /**
+   * Take the browser back from full screen if needed.
+   */
+  closeFullScreen() {
+    if (this.fullscr) {
+      this._psychoJS.logger.debug(
+        "Resizing Window: ",
+        this._name,
+        "back from full screen.",
+      );
+
+      if (typeof document.exitFullscreen === "function") {
+        document.exitFullscreen().catch(() => {
+          this.psychoJS.logger.warn("Unable to close fullscreen.");
+        });
+      } else if (typeof document.mozCancelFullScreen === "function") {
+        document.mozCancelFullScreen();
+      } else if (typeof document.webkitExitFullscreen === "function") {
+        document.webkitExitFullscreen();
+      } else if (typeof document.msExitFullscreen === "function") {
+        document.msExitFullscreen();
+      } else {
+        this.psychoJS.logger.warn("Unable to close fullscreen.");
+      }
+    }
+  }
+
+  /**
+   * Estimate the frame rate.
+   *
+   * @return {number} rAF based delta time based approximation, 60.0 by default
+   */
+  getActualFrameRate() {
+    // gets updated frame by frame
+    const lastDelta = this.psychoJS.scheduler._lastDelta;
+    const fps = lastDelta === 0 ? 60.0 : 1000.0 / lastDelta;
+
+    return fps;
+  }
+
+  /**
+   * Log a message.
+   *
+   *  Note: the message will be time-stamped at the next call to requestAnimationFrame.
+   *
+   * @param {Object} options
+   * @param {String} options.msg the message to be logged
+   * @param {module:util.Logger.ServerLevel} [level = module:util.Logger.ServerLevel.EXP] the log level
+   * @param {Object} [obj] the object associated with the message
+   */
+  logOnFlip({ level = Logger.ServerLevel.EXP, msg, obj } = {}) {
+    this._msgToBeLogged.push({ level, msg, obj });
+  }
+
+  /**
+   * Remove PIXI.DisplayObject from the container displayed on the scene (window)
+   */
+  removePixiObject(pixiObject) {
+    this._stimsContainer.removeChild(pixiObject);
+  }
+
+  /**
+   * Render the stimuli onto the canvas.
+   */
+  render() {
+    if (!this._renderer) {
+      return;
+    }
+
+    this._frameCount++;
+
+    // render the PIXI container:
+    this._renderer.render(this._rootContainer);
+
+    if (typeof this._renderer.gl !== "undefined") {
+      // this is to make sure that the GPU is done rendering, it may not be necessary
+      // [http://www.html5gamedevs.com/topic/27849-detect-when-view-has-been-rendered/]
+      this._renderer.gl.readPixels(
+        0,
+        0,
+        1,
+        1,
+        this._renderer.gl.RGBA,
+        this._renderer.gl.UNSIGNED_BYTE,
+        new Uint8Array(4),
+      );
+
+      // blocks execution until the rendering is fully done:
+      if (this._waitBlanking) {
+        this._renderer.gl.finish();
+      }
+    }
+
+    // call the callOnFlip functions and remove them:
+    for (let callback of this._flipCallbacks) {
+      callback["function"](...callback["arguments"]);
+    }
+    this._flipCallbacks = [];
+
+    // log:
+    this._writeLogOnFlip();
+
+    // prepare the scene for the next animation frame:
+    this._refresh();
   }
 }

@@ -8,19 +8,19 @@ class MaxDiffMatrix {
     // INCLUDING those added/modified by application's code.
     const surveyCSS = cfg.question.css;
     this._CSS_CLASSES = {
-      WRAPPER: `${surveyCSS.matrix.tableWrapper} matrix-maxdiff`,
-      TABLE: surveyCSS.matrix.root,
-      TABLE_ROW: surveyCSS.matrixdropdown.row,
-      TABLE_HEADER_CELL: surveyCSS.matrix.headerCell,
-      TABLE_CELL: surveyCSS.matrix.cell,
+      CHECKBOX: surveyCSS.checkbox.item,
       INPUT_TEXT: surveyCSS.text.root,
-      LABEL: surveyCSS.matrix.label,
       ITEM_CHECKED: surveyCSS.matrix.itemChecked,
-      ITEM_VALUE: surveyCSS.matrix.itemValue,
       ITEM_DECORATOR: surveyCSS.matrix.materialDecorator,
+      ITEM_VALUE: surveyCSS.matrix.itemValue,
+      LABEL: surveyCSS.matrix.label,
       RADIO: surveyCSS.radiogroup.item,
       SELECT: surveyCSS.dropdown.control,
-      CHECKBOX: surveyCSS.checkbox.item,
+      TABLE: surveyCSS.matrix.root,
+      TABLE_CELL: surveyCSS.matrix.cell,
+      TABLE_HEADER_CELL: surveyCSS.matrix.headerCell,
+      TABLE_ROW: surveyCSS.matrixdropdown.row,
+      WRAPPER: `${surveyCSS.matrix.tableWrapper} matrix-maxdiff`,
     };
 
     // const CSS_CLASSES = {
@@ -138,29 +138,6 @@ class MaxDiffMatrix {
 
 export default function init(Survey) {
   var widget = {
-    //the widget name. It should be unique and written in lowcase.
-    name: "maxdiffmatrix",
-
-    //the widget title. It is how it will appear on the toolbox of the SurveyJS Editor/Builder
-    title: "MaxDiff matrix",
-
-    //the name of the icon on the toolbox. We will leave it empty to use the standard one
-    iconName: "",
-
-    //If the widgets depends on third-party library(s) then here you may check if this library(s) is loaded
-    widgetIsLoaded: function () {
-      //return typeof $ == "function" && !!$.fn.select2; //return true if jQuery and select2 widget are loaded on the page
-      return true; //we do not require anything so we just return true.
-    },
-
-    //SurveyJS library calls this function for every question to check, if it should use this widget instead of default rendering/behavior
-    isFit: function (question) {
-      //we return true if the type of question is maxdiffmatrix
-      return question.getType() === "maxdiffmatrix";
-      //the following code will activate the widget for a text question with inputType equals to date
-      //return question.getType() === 'text' && question.inputType === "date";
-    },
-
     //Use this function to create a new class or add new properties or remove unneeded properties from your widget
     //activatedBy tells how your widget has been activated by: property, type or customType
     //property - it means that it will activated if a property of the existing question type is set to particular value, for example inputType = "date"
@@ -177,28 +154,22 @@ export default function init(Survey) {
       //For more information go to https://surveyjs.io/Examples/Builder/?id=addproperties#content-docs
       Survey.JsonObject.metaData.addProperties("maxdiffmatrix", [
         {
-          name: "rows",
-          isArray: true,
           default: [],
+          isArray: true,
+          name: "rows",
         },
         {
-          name: "columns",
-          isArray: true,
           default: [],
+          isArray: true,
+          name: "columns",
         },
       ]);
     },
 
-    //If you want to use the default question rendering then set this property to true. We do not need any default rendering, we will use our our htmlTemplate
-    isDefaultRender: false,
-
-    //You should use it if your set the isDefaultRender to false
-    htmlTemplate: "<div></div>",
-
     //The main function, rendering and two-way binding
     afterRender: function (question, el) {
       console.log("MaxDiff mat", question.rows, question.columns);
-      new MaxDiffMatrix({ question, el });
+      new MaxDiffMatrix({ el, question });
 
       // let containers = el.querySelectorAll(".srv-slider-container");
       // let inputDOMS = el.querySelectorAll(".srv-slider");
@@ -273,6 +244,35 @@ export default function init(Survey) {
 
       // make elements disabled if needed
       // onReadOnlyChangedCallback();
+    },
+
+    //You should use it if your set the isDefaultRender to false
+    htmlTemplate: "<div></div>",
+
+    //the name of the icon on the toolbox. We will leave it empty to use the standard one
+    iconName: "",
+
+    //If you want to use the default question rendering then set this property to true. We do not need any default rendering, we will use our our htmlTemplate
+    isDefaultRender: false,
+
+    //SurveyJS library calls this function for every question to check, if it should use this widget instead of default rendering/behavior
+    isFit: function (question) {
+      //we return true if the type of question is maxdiffmatrix
+      return question.getType() === "maxdiffmatrix";
+      //the following code will activate the widget for a text question with inputType equals to date
+      //return question.getType() === 'text' && question.inputType === "date";
+    },
+
+    //the widget name. It should be unique and written in lowcase.
+    name: "maxdiffmatrix",
+
+    //the widget title. It is how it will appear on the toolbox of the SurveyJS Editor/Builder
+    title: "MaxDiff matrix",
+
+    //If the widgets depends on third-party library(s) then here you may check if this library(s) is loaded
+    widgetIsLoaded: function () {
+      //return typeof $ == "function" && !!$.fn.select2; //return true if jQuery and select2 widget are loaded on the page
+      return true; //we do not require anything so we just return true.
     },
 
     //Use it to destroy the widget. It is typically needed by jQuery widgets
